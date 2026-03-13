@@ -105,12 +105,13 @@ Crie o arquivo `src/mocks/firebase-sdk.js`.
 
 Este arquivo **deve manter a mesma interface** do `base44-sdk.js` (mock localStorage):
 - Exporta `createClient(config)` que retorna `{ entities, auth, appLogs }`
-- Cada entidade tem os métodos: `list(orderBy)`, `create(data)`, `update(id, data)`, `delete(id)`, `get(id)`
+- Cada entidade tem os métodos: `list(orderBy)`, `subscribe(orderBy, callback)`, `create(data)`, `update(id, data)`, `delete(id)`, `get(id)`
 - Exporta `createAxiosClient(config)`
 
 A diferença é que ao invés de usar `localStorage`, usa **Firestore**:
 - Cada entidade é mapeada para uma **collection** no Firestore
 - `list()` usa `getDocs` com `query` e `orderBy`
+- `subscribe()` usa `onSnapshot` para atualizações em tempo real
 - `create()` usa `addDoc`
 - `update()` usa `updateDoc`
 - `delete()` usa `deleteDoc`
@@ -122,8 +123,20 @@ import { db } from '@/lib/firebase';
 import {
   collection, doc, getDocs, getDoc,
   addDoc, updateDoc, deleteDoc,
-  query, orderBy,
+  query, orderBy, onSnapshot
 } from 'firebase/firestore';
+```
+
+**Exemplo do método subscribe no SDK:**
+```javascript
+subscribe(orderByField, callback) {
+  let q;
+  // ... lógica de ordenação (mesma do list) ...
+  return onSnapshot(q, (snapshot) => {
+    const items = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+    callback(items);
+  });
+}
 ```
 
 **⚠️ IMPORTANTE:** Atualize a lista de entidades dentro de `createClient()` conforme o projeto:
@@ -167,7 +180,56 @@ Após criar/alterar o `.env`, é necessário reiniciar o Vite:
 npm run dev
 ```
 
-### 11. Verificar a integração
+### 11. Habilitar Atualizações em Tempo Real (Opcional, mas Recomendado)
+
+Para que o app reflita mudanças feitas diretamente no Firebase Console ou por outros usuários instantaneamente, use um hook de sincronização.
+
+1. Crie o hook `src/hooks/useFirebaseRealtime.js`:
+
+```javascript
+import { useEffect } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
+import { base44 } from '@/api/base44Client';
+
+export function useFirebaseRealtime(entityName, queryKey, orderByField) {
+  const queryClient = useQueryClient();
+
+  useEffect(() => {
+    const entity = base44.entities[entityName];
+    if (!entity || !entity.subscribe) return;
+
+    // Assina mudanças no Firestore
+    const unsubscribe = entity.subscribe(orderByField, (data) => {
+      // Atualiza o cache do React Query em tempo real
+      queryClient.setQueryData(queryKey, data);
+    });
+
+    return () => unsubscribe();
+  }, [entityName, JSON.stringify(queryKey), orderByField, queryClient]);
+}
+```
+
+2. Aplique o hook nas páginas que usam `useQuery`:
+
+```javascript
+// Exemplo em src/pages/Dashboard.jsx
+import { useFirebaseRealtime } from "@/hooks/useFirebaseRealtime";
+
+export default function Dashboard() {
+  // Ativa o Realtime para Dívidas e Pagamentos
+  useFirebaseRealtime("Debt", ["debts"], "-created_date");
+  useFirebaseRealtime("Payment", ["payments"], "-payment_date");
+
+  // O useQuery continuará funcionando normalmente, mas os dados agora 
+  // serão atualizados "por fora" pelo hook sempre que o banco mudar.
+  const { data: debts = [] } = useQuery({ queryKey: ["debts"], ... });
+  // ...
+}
+```
+
+---
+
+### 12. Verificar a integração
 
 1. Abra a aplicação no navegador (http://localhost:5173/)
 2. Abra o DevTools → Console e verifique a mensagem: `[Firebase SDK] Cliente criado com Firestore como backend`
@@ -265,8 +327,11 @@ service cloud.firestore {
 - [ ] `.env` criado com credenciais reais
 - [ ] `.env.example` criado como template
 - [ ] `.env` adicionado ao `.gitignore`
-- [ ] `src/mocks/firebase-sdk.js` criado com todas as entidades
+- [ ] `src/mocks/firebase-sdk.js` criado com todas as entidades e suporte a `subscribe`
+- [ ] `src/hooks/useFirebaseRealtime.js` criado para suporte a tempo real
+- [ ] Hook de Realtime aplicado nas páginas principais (Dashboard, Dívidas, etc.)
 - [ ] `src/api/base44Client.js` atualizado (import do firebase-sdk)
 - [ ] `src/lib/AuthContext.jsx` atualizado (import do firebase-sdk)
 - [ ] Servidor reiniciado
 - [ ] CRUD testado no app e verificado no Firebase Console
+- [ ] Sincronização em tempo real (Realtime) verificada entre App e Firebase Console
