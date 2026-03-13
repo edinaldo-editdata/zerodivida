@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Loader2 } from "lucide-react";
 import { motion } from "framer-motion";
+import { useFirebaseRealtime } from "@/hooks/useFirebaseRealtime";
 
 import ReportSummaryCards from "@/components/reports/ReportSummaryCards";
 import CashFlowChart from "@/components/reports/CashFlowChart";
@@ -31,6 +32,10 @@ const PERIOD_OPTIONS = [
 
 export default function Reports() {
   const [period, setPeriod] = useState("6");
+
+  useFirebaseRealtime("Income", ["incomes"], "-date");
+  useFirebaseRealtime("Payment", ["payments"], "-payment_date");
+  useFirebaseRealtime("Debt", ["debts"], "-created_date");
 
   const { data: incomes = [], isLoading: loadingIncomes } = useQuery({
     queryKey: ["incomes"],

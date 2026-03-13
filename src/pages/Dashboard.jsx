@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Plus, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
+import { useFirebaseRealtime } from "@/hooks/useFirebaseRealtime"; // Adicionado
 
 import SummaryCards from "@/components/dashboard/SummaryCards";
 import DebtChart from "@/components/dashboard/DebtChart";
@@ -19,6 +20,10 @@ export default function Dashboard() {
   const [selectedDebt, setSelectedDebt] = useState(null);
   const [showPaymentForm, setShowPaymentForm] = useState(false);
   const queryClient = useQueryClient();
+
+  // Ativa Realtime
+  useFirebaseRealtime("Debt", ["debts"], "-created_date");
+  useFirebaseRealtime("Payment", ["payments"], "-payment_date");
 
   const { data: debts = [], isLoading } = useQuery({
     queryKey: ["debts"],

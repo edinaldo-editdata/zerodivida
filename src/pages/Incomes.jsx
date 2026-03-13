@@ -9,6 +9,7 @@ import { Plus, Search, Loader2, Pencil, Trash2, TrendingUp, RefreshCw, Wallet } 
 import { motion, AnimatePresence } from "framer-motion";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { useFirebaseRealtime } from "@/hooks/useFirebaseRealtime";
 import IncomeForm from "@/components/income/IncomeForm";
 
 const CATEGORY_CONFIG = {
@@ -31,6 +32,8 @@ export default function Incomes() {
   const [showForm, setShowForm] = useState(false);
   const [editIncome, setEditIncome] = useState(null);
   const queryClient = useQueryClient();
+
+  useFirebaseRealtime("Income", ["incomes"], "-date");
 
   const { data: incomes = [], isLoading } = useQuery({
     queryKey: ["incomes"],

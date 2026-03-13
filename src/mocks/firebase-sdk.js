@@ -21,6 +21,7 @@ import {
   deleteDoc,
   query,
   orderBy,
+  onSnapshot,
   Timestamp,
 } from 'firebase/firestore';
 
@@ -33,8 +34,6 @@ function createEntityCRUD(entityName) {
   return {
     /**
      * Lista todos os documentos da collection.
-     * @param {string} orderByField - Campo para ordenação. Prefixar com "-" para desc.
-     *   Exemplos: "-created_date", "date", "-payment_date"
      */
     async list(orderByField) {
       let q;
@@ -45,7 +44,6 @@ function createEntityCRUD(entityName) {
         try {
           q = query(colRef, orderBy(field, desc ? 'desc' : 'asc'));
         } catch {
-          // Se o campo de ordenação não existir ainda, busca sem ordenação
           q = colRef;
         }
       } else {
@@ -54,6 +52,34 @@ function createEntityCRUD(entityName) {
 
       const snapshot = await getDocs(q);
       return snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+    },
+
+    /**
+     * Assina mudanças em tempo real na collection.
+     * @param {string} orderByField - Campo para ordenação.
+     * @param {function} callback - Função chamada a cada mudança.
+     * @returns {function} Função para cancelar a assinatura (unsubscribe).
+     */
+    subscribe(orderByField, callback) {
+      let q;
+      if (orderByField) {
+        const desc = orderByField.startsWith('-');
+        const field = desc ? orderByField.slice(1) : orderByField;
+        try {
+          q = query(colRef, orderBy(field, desc ? 'desc' : 'asc'));
+        } catch {
+          q = colRef;
+        }
+      } else {
+        q = colRef;
+      }
+
+      return onSnapshot(q, (snapshot) => {
+        const items = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+        callback(items);
+      }, (error) => {
+        console.error(`Error subscribing to ${entityName}:`, error);
+      });
     },
 
     /**
@@ -79,7 +105,6 @@ function createEntityCRUD(entityName) {
         ...data,
         updated_date: new Date().toISOString(),
       };
-      // Remove o campo "id" do payload para não duplicar dentro do documento
       delete updateData.id;
       await updateDoc(docRef, updateData);
       return { id, ...updateData };

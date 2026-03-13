@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Plus, Search, Loader2, Filter } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useFirebaseRealtime } from "@/hooks/useFirebaseRealtime";
 
 import DebtCard from "@/components/debts/DebtCard";
 import DebtForm from "@/components/debts/DebtForm";
@@ -21,6 +22,9 @@ export default function Debts() {
   const [selectedDebt, setSelectedDebt] = useState(null);
   const [showPaymentForm, setShowPaymentForm] = useState(false);
   const queryClient = useQueryClient();
+
+  useFirebaseRealtime("Debt", ["debts"], "-created_date");
+  useFirebaseRealtime("Payment", ["payments"], "-payment_date");
 
   const { data: debts = [], isLoading } = useQuery({
     queryKey: ["debts"],
