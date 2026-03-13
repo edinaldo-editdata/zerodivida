@@ -1,0 +1,10 @@
+{
+  "name": "ZeroDivida",
+  "short_name": "ZeroDivida",
+  "description": "Controle de dívidas e finanças pessoais",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0B0F19",
+  "theme_color": "#10B981",
+  "icons": []
+}
