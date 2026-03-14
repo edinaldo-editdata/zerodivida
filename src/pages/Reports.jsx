@@ -3,9 +3,10 @@ import { Input } from "@/components/ui/input";
 import { base44 } from "@/api/base44Client";
 import { useQuery } from "@tanstack/react-query";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2 } from "lucide-react";
+import { Loader2, Info } from "lucide-react";
 import { motion } from "framer-motion";
 import { useFirebaseRealtime } from "@/hooks/useFirebaseRealtime";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 import ReportSummaryCards from "@/components/reports/ReportSummaryCards";
 import CashFlowChart from "@/components/reports/CashFlowChart";
@@ -316,16 +317,27 @@ export default function Reports() {
               </Select>
             </div>
             <div className="flex flex-col">
-              <label className="text-xs text-slate-500">Saldo inicial</label>
+              <div className="flex items-center gap-1.5">
+                <label className="text-xs text-slate-500">Saldo inicial</label>
+                <TooltipProvider delayDuration={150}>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button type="button" className="text-slate-500 hover:text-white transition-colors">
+                        <Info className="w-3.5 h-3.5" />
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent side="top">
+                      Usado como saldo disponível no primeiro mês do período escolhido. Ajuste ao trocar o intervalo.
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </div>
               <Input
                 type="number"
                 value={initialBalance}
                 onChange={e => handleInitialBalanceChange(e.target.value)}
                 className="bg-white/[0.04] border-white/[0.08] text-white"
               />
-              <p className="text-[11px] text-slate-500 mt-1">
-                Usado como saldo disponível no primeiro mês do período selecionado. Atualize ao trocar o intervalo.
-              </p>
             </div>
           </div>
         </motion.div>
