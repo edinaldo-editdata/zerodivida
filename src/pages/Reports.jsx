@@ -301,17 +301,20 @@ export default function Reports() {
             <h1 className="text-2xl font-bold tracking-tight">Relatórios</h1>
             <p className="text-sm text-slate-500 mt-0.5">Análise financeira detalhada</p>
           </div>
-          <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center w-full lg:w-auto">
-            <Select value={period} onValueChange={handlePeriodChange}>
-              <SelectTrigger className="w-full sm:w-48 bg-white/[0.04] border-white/[0.08] text-white">
-                <SelectValue placeholder="Período" />
-              </SelectTrigger>
-              <SelectContent>
-                {periodOptions.map(o => (
-                  <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+          <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-end w-full lg:w-auto">
+            <div className="flex flex-col flex-1 sm:flex-none">
+              <label className="text-xs text-slate-500">Período</label>
+              <Select value={period} onValueChange={handlePeriodChange}>
+                <SelectTrigger className="w-full sm:w-48 bg-white/[0.04] border-white/[0.08] text-white">
+                  <SelectValue placeholder="Período" />
+                </SelectTrigger>
+                <SelectContent>
+                  {periodOptions.map(o => (
+                    <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
             <div className="flex flex-col">
               <label className="text-xs text-slate-500">Saldo inicial</label>
               <Input
