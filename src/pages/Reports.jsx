@@ -323,6 +323,9 @@ export default function Reports() {
                 onChange={e => handleInitialBalanceChange(e.target.value)}
                 className="bg-white/[0.04] border-white/[0.08] text-white"
               />
+              <p className="text-[11px] text-slate-500 mt-1">
+                Usado como saldo disponível no primeiro mês do período selecionado. Atualize ao trocar o intervalo.
+              </p>
             </div>
           </div>
         </motion.div>
