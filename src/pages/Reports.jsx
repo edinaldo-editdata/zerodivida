@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery } from "@tanstack/react-query";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -23,15 +23,70 @@ const DEBT_CATEGORY_LABELS = {
 };
 
 const MONTHS = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
+const STORAGE_KEY = "reports_period";
 
-const PERIOD_OPTIONS = [
-  { value: "3", label: "Últimos 3 meses" },
-  { value: "6", label: "Últimos 6 meses" },
-  { value: "12", label: "Últimos 12 meses" },
+const BASE_PERIOD_OPTIONS = [
+  { value: "3m", label: "Últimos 3 meses" },
+  { value: "6m", label: "Últimos 6 meses" },
+  { value: "12m", label: "Últimos 12 meses" },
 ];
 
+function getPeriodDefinition(value, now = new Date()) {
+  if (!value) {
+    return null;
+  }
+
+  if (value.startsWith("year-")) {
+    const [, yearStr] = value.split("-");
+    const year = parseInt(yearStr, 10);
+    if (!Number.isFinite(year)) {
+      return null;
+    }
+    return {
+      type: "calendar",
+      months: 12,
+      start: new Date(year, 0, 1),
+      label: `Ano ${year}`,
+    };
+  }
+
+  const months = parseInt(value.replace("m", ""), 10) || parseInt(value, 10) || 6;
+  const safeMonths = Math.max(1, months);
+  const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  const start = new Date(currentMonthStart.getFullYear(), currentMonthStart.getMonth() - (safeMonths - 1), 1);
+
+  return {
+    type: "rolling",
+    months: safeMonths,
+    start,
+    label: `Últimos ${safeMonths} meses`,
+  };
+}
+
 export default function Reports() {
-  const [period, setPeriod] = useState("6");
+  const [period, setPeriod] = useState(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem(STORAGE_KEY) || "6m";
+    }
+    return "6m";
+  });
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+    const stored = localStorage.getItem(STORAGE_KEY);
+    if (stored && stored !== period) {
+      setPeriod(stored);
+    }
+  }, []);
+
+  const handlePeriodChange = (value) => {
+    setPeriod(value);
+    if (typeof window !== "undefined") {
+      localStorage.setItem(STORAGE_KEY, value);
+    }
+  };
 
   useFirebaseRealtime("Income", ["incomes"], "-date");
   useFirebaseRealtime("Payment", ["payments"], "-payment_date");
@@ -54,14 +109,84 @@ export default function Reports() {
 
   const isLoading = loadingIncomes || loadingPayments || loadingDebts;
 
+  const periodOptions = useMemo(() => {
+    const yearSet = new Set();
+    const nowYear = new Date().getFullYear();
+    yearSet.add(nowYear);
+    yearSet.add(nowYear - 1);
+
+    incomes.forEach(inc => {
+      if (inc?.date) {
+        const date = new Date(inc.date);
+        if (!Number.isNaN(date.getTime())) {
+          yearSet.add(date.getFullYear());
+        }
+      }
+    });
+    payments.forEach(pay => {
+      if (pay?.payment_date) {
+        const date = new Date(pay.payment_date);
+        if (!Number.isNaN(date.getTime())) {
+          yearSet.add(date.getFullYear());
+        }
+      }
+    });
+
+    if (period.startsWith("year-")) {
+      const [, yearStr] = period.split("-");
+      const yearVal = parseInt(yearStr, 10);
+      if (Number.isFinite(yearVal)) {
+        yearSet.add(yearVal);
+      }
+    }
+
+    const yearOptions = Array.from(yearSet)
+      .filter(year => Number.isFinite(year))
+      .sort((a, b) => b - a)
+      .map(year => ({ value: `year-${year}`, label: `Ano ${year}` }));
+
+    return [...BASE_PERIOD_OPTIONS, ...yearOptions];
+  }, [incomes, payments, period]);
+
+  useEffect(() => {
+    if (!periodOptions.length) {
+      return;
+    }
+    const exists = periodOptions.some(option => option.value === period);
+    if (!exists) {
+      const fallback = BASE_PERIOD_OPTIONS[1]?.value || periodOptions[0].value;
+      setPeriod(fallback);
+      if (typeof window !== "undefined") {
+        localStorage.setItem(STORAGE_KEY, fallback);
+      }
+    }
+  }, [periodOptions, period]);
+
+  const periodDefinition = useMemo(() => getPeriodDefinition(period), [period]);
+
+  const { monthBuckets, rangeStart, rangeEnd } = useMemo(() => {
+    if (!periodDefinition) {
+      return { monthBuckets: [], rangeStart: null, rangeEnd: null };
+    }
+
+    const buckets = [];
+    for (let i = 0; i < periodDefinition.months; i++) {
+      buckets.push(new Date(periodDefinition.start.getFullYear(), periodDefinition.start.getMonth() + i, 1));
+    }
+    const startBucket = buckets[0] ? new Date(buckets[0].getTime()) : null;
+    const lastBucket = buckets[buckets.length - 1];
+    const endDate = lastBucket ? new Date(lastBucket.getFullYear(), lastBucket.getMonth() + 1, 0, 23, 59, 59, 999) : null;
+
+    return { monthBuckets: buckets, rangeStart: startBucket, rangeEnd: endDate };
+  }, [periodDefinition]);
+
   // Build monthly cash flow data
   const monthlyData = useMemo(() => {
-    const monthCount = parseInt(period);
-    const now = new Date();
-    const data = [];
+    if (!monthBuckets.length) {
+      return [];
+    }
 
-    for (let i = monthCount - 1; i >= 0; i--) {
-      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    return monthBuckets.map(d => {
       const monthLabel = `${MONTHS[d.getMonth()]}/${String(d.getFullYear()).slice(2)}`;
 
       const incomeTotal = incomes
@@ -78,10 +203,9 @@ export default function Reports() {
         })
         .reduce((s, p) => s + (p.amount || 0), 0);
 
-      data.push({ month: monthLabel, income: incomeTotal, expenses: expensesTotal, balance: incomeTotal - expensesTotal });
-    }
-    return data;
-  }, [incomes, payments, period]);
+      return { month: monthLabel, income: incomeTotal, expenses: expensesTotal, balance: incomeTotal - expensesTotal };
+    });
+  }, [incomes, payments, monthBuckets]);
 
   // Accumulated balance
   const accumulatedData = useMemo(() => {
@@ -100,33 +224,39 @@ export default function Reports() {
 
   // Income by category
   const incomeByCategory = useMemo(() => {
-    const monthCount = parseInt(period);
-    const now = new Date();
-    const cutoff = new Date(now.getFullYear(), now.getMonth() - monthCount + 1, 1);
+    if (!rangeStart) {
+      return [];
+    }
     const map = {};
     incomes
-      .filter(i => new Date(i.date) >= cutoff)
+      .filter(i => {
+        const date = new Date(i.date);
+        return date >= rangeStart && (!rangeEnd || date <= rangeEnd);
+      })
       .forEach(i => {
         map[i.category] = (map[i.category] || 0) + (i.amount || 0);
       });
     return Object.entries(map).map(([k, v]) => ({ label: INCOME_CATEGORY_LABELS[k] || k, value: v }));
-  }, [incomes, period]);
+  }, [incomes, rangeStart, rangeEnd]);
 
   // Expenses (payments) — link to debt category
   const expensesByCategory = useMemo(() => {
-    const monthCount = parseInt(period);
-    const now = new Date();
-    const cutoff = new Date(now.getFullYear(), now.getMonth() - monthCount + 1, 1);
+    if (!rangeStart) {
+      return [];
+    }
     const map = {};
     payments
-      .filter(p => new Date(p.payment_date) >= cutoff)
+      .filter(p => {
+        const date = new Date(p.payment_date);
+        return date >= rangeStart && (!rangeEnd || date <= rangeEnd);
+      })
       .forEach(p => {
         const debt = debts.find(d => d.id === p.debt_id);
         const cat = debt?.category || "outro";
         map[cat] = (map[cat] || 0) + (p.amount || 0);
       });
     return Object.entries(map).map(([k, v]) => ({ label: DEBT_CATEGORY_LABELS[k] || k, value: v }));
-  }, [payments, debts, period]);
+  }, [payments, debts, rangeStart, rangeEnd]);
 
   if (isLoading) {
     return (
@@ -146,12 +276,12 @@ export default function Reports() {
             <h1 className="text-2xl font-bold tracking-tight">Relatórios</h1>
             <p className="text-sm text-slate-500 mt-0.5">Análise financeira detalhada</p>
           </div>
-          <Select value={period} onValueChange={setPeriod}>
+          <Select value={period} onValueChange={handlePeriodChange}>
             <SelectTrigger className="w-48 bg-white/[0.04] border-white/[0.08] text-white">
-              <SelectValue />
+              <SelectValue placeholder="Período" />
             </SelectTrigger>
             <SelectContent>
-              {PERIOD_OPTIONS.map(o => (
+              {periodOptions.map(o => (
                 <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
               ))}
             </SelectContent>

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -28,12 +28,23 @@ const defaultForm = {
 };
 
 export default function IncomeForm({ open, onClose, onSave, editIncome }) {
-  const [form, setForm] = useState(editIncome ? {
-    ...defaultForm,
-    ...editIncome,
-    amount: String(editIncome.amount || ""),
-    recurrent_day: String(editIncome.recurrent_day || ""),
-  } : defaultForm);
+  const [form, setForm] = useState(defaultForm);
+  const [updateScope, setUpdateScope] = useState("single");
+
+  useEffect(() => {
+    if (editIncome) {
+      setForm({
+        ...defaultForm,
+        ...editIncome,
+        amount: String(editIncome.amount || ""),
+        recurrent_day: String(editIncome.recurrent_day || ""),
+      });
+      setUpdateScope("single");
+    } else {
+      setForm(defaultForm);
+      setUpdateScope("single");
+    }
+  }, [editIncome, open]);
 
   const handleChange = (field, value) => setForm(prev => ({ ...prev, [field]: value }));
 
@@ -49,7 +60,8 @@ export default function IncomeForm({ open, onClose, onSave, editIncome }) {
       recurrent_day: recurringDayValue,
       notes: form.notes,
     };
-    onSave(payload);
+    const scope = editIncome?.recurrence_id ? updateScope : "single";
+    onSave(payload, { scope });
   };
 
   return (
@@ -108,7 +120,7 @@ export default function IncomeForm({ open, onClose, onSave, editIncome }) {
             <div className="col-span-2 flex items-center justify-between p-3 rounded-xl bg-white/[0.02] border border-white/[0.06]">
               <div>
                 <p className="text-sm text-white">Entrada recorrente</p>
-                <p className="text-xs text-slate-500">Repete todo mês automaticamente</p>
+                <p className="text-xs text-slate-500">Repete por 12 meses automaticamente</p>
               </div>
               <Switch
                 checked={form.recurrent}
@@ -127,6 +139,20 @@ export default function IncomeForm({ open, onClose, onSave, editIncome }) {
                   placeholder="Ex: 5"
                   className="bg-white/5 border-white/10 text-white mt-1"
                 />
+              </div>
+            )}
+            {editIncome?.recurrence_id && (
+              <div className="col-span-2">
+                <Label className="text-xs text-slate-400">Aplicar alterações</Label>
+                <Select value={updateScope} onValueChange={setUpdateScope}>
+                  <SelectTrigger className="bg-white/5 border-white/10 text-white mt-1">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="single">Somente esta parcela</SelectItem>
+                    <SelectItem value="future">Esta e as futuras</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             )}
             <div className="col-span-2">

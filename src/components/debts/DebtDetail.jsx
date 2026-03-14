@@ -5,7 +5,7 @@ import { motion } from "framer-motion";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { ArrowLeft, Pencil, Trash2, Plus, Receipt, CreditCard as CreditCardIcon } from "lucide-react";
+import { Pencil, Trash2, Plus, Receipt, CreditCard as CreditCardIcon } from "lucide-react";
 
 const CARD_BRANDS = {
   visa: "Visa",

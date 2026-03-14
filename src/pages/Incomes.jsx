@@ -10,7 +10,9 @@ import { motion, AnimatePresence } from "framer-motion";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useFirebaseRealtime } from "@/hooks/useFirebaseRealtime";
+import { useToast } from "@/components/ui/use-toast";
 import IncomeForm from "@/components/income/IncomeForm";
+import { buildRecurringRecords, DEFAULT_RECURRENCE_MONTHS, ensureDateString } from "@/lib/recurrence";
 
 const CATEGORY_CONFIG = {
   salario:      { label: "Salário",      color: "bg-emerald-500/15 text-emerald-400 border-emerald-500/20",  dot: "bg-emerald-400" },
@@ -32,6 +34,7 @@ export default function Incomes() {
   const [showForm, setShowForm] = useState(false);
   const [editIncome, setEditIncome] = useState(null);
   const queryClient = useQueryClient();
+  const { toast } = useToast();
 
   useFirebaseRealtime("Income", ["incomes"], "-date");
 
@@ -40,26 +43,174 @@ export default function Incomes() {
     queryFn: () => base44.entities.Income.list("-date"),
   });
 
+  const createRecurringInstances = async (incomeData) => {
+    const normalizedDay = incomeData.recurrent_day || new Date(incomeData.date).getDate();
+    const { records } = buildRecurringRecords({
+      ...incomeData,
+      recurrent: true,
+      recurrent_day: normalizedDay,
+      recurrence_start_date: incomeData.date,
+    }, DEFAULT_RECURRENCE_MONTHS);
+
+    const [masterPayload, ...futurePayloads] = records;
+    const master = await base44.entities.Income.create({
+      ...masterPayload,
+      is_recurrence_instance: false,
+    });
+
+    const restResults = await Promise.allSettled(
+      futurePayloads.map(payload => base44.entities.Income.create({
+        ...payload,
+        origin_income_id: master.id,
+      })),
+    );
+
+    const successes = restResults.filter(r => r.status === "fulfilled").length;
+    const failures = restResults.length - successes;
+
+    if (failures > 0) {
+      console.error("Falha ao criar algumas parcelas recorrentes", restResults);
+    }
+
+    return {
+      master,
+      createdCount: 1 + successes,
+      failedCount: failures,
+    };
+  };
+
+  const updateFutureInstances = async (income, payload) => {
+    const recurrenceId = income.recurrence_id;
+    if (!recurrenceId) {
+      return { updated: 0, failed: 0 };
+    }
+
+    const currentOffset = income.recurrence_offset || 0;
+    const totalMonths = income.recurrence_months || DEFAULT_RECURRENCE_MONTHS;
+    const monthsRemaining = Math.max(totalMonths - currentOffset, 1);
+    const normalizedDay = payload.recurrent_day || new Date(payload.date).getDate();
+
+    const { records } = buildRecurringRecords({
+      ...payload,
+      recurrent_day: normalizedDay,
+      recurrence_id: recurrenceId,
+      recurrence_start_date: income.recurrence_start_date || ensureDateString(income.date),
+    }, monthsRemaining, currentOffset);
+
+    const targets = incomes
+      .filter(item => item.recurrence_id === recurrenceId && (item.recurrence_offset || 0) >= currentOffset)
+      .sort((a, b) => (a.recurrence_offset || 0) - (b.recurrence_offset || 0));
+
+    const updates = targets.map(target => {
+      const record = records.find(r => r.recurrence_offset === target.recurrence_offset);
+      const payloadToSend = record ? record : {
+        ...payload,
+        date: ensureDateString(target.date),
+        recurrence_id: recurrenceId,
+        recurrence_offset: target.recurrence_offset,
+        recurrence_months: totalMonths,
+        recurrence_start_date: income.recurrence_start_date || ensureDateString(income.date),
+        is_recurrence_instance: target.is_recurrence_instance,
+      };
+      return base44.entities.Income.update(target.id, {
+        ...payloadToSend,
+        is_recurrence_instance: target.is_recurrence_instance || payloadToSend.is_recurrence_instance,
+        origin_income_id: target.origin_income_id || income.id,
+      });
+    });
+
+    const results = await Promise.allSettled(updates);
+    const successes = results.filter(r => r.status === "fulfilled").length;
+    const failures = results.length - successes;
+
+    if (failures > 0) {
+      console.error("Falha ao atualizar parcelas futuras", results);
+    }
+
+    return { updated: successes, failed: failures };
+  };
+
   const createIncome = useMutation({
-    mutationFn: (data) => base44.entities.Income.create(data),
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["incomes"] }); setShowForm(false); },
+    mutationFn: async (data) => {
+      if (data.recurrent) {
+        return createRecurringInstances(data);
+      }
+      const created = await base44.entities.Income.create(data);
+      return { master: created, createdCount: 1, failedCount: 0 };
+    },
+    onSuccess: (result) => {
+      queryClient.invalidateQueries({ queryKey: ["incomes"] });
+      setShowForm(false);
+      setEditIncome(null);
+      toast({
+        title: "Entrada criada",
+        description: result?.failedCount
+          ? `Algumas parcelas não foram geradas (${result.failedCount}). Verifique sua lista.`
+          : result?.createdCount > 1
+            ? `${result.createdCount} parcelas recorrentes adicionadas.`
+            : "Lançamento registrado com sucesso.",
+      });
+    },
+    onError: () => {
+      toast({ title: "Erro ao salvar", description: "Não foi possível registrar a entrada.", variant: "destructive" });
+    },
   });
 
   const updateIncome = useMutation({
     mutationFn: ({ id, data }) => base44.entities.Income.update(id, data),
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["incomes"] }); setShowForm(false); setEditIncome(null); },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["incomes"] });
+      setShowForm(false);
+      setEditIncome(null);
+      toast({ title: "Entrada atualizada", description: "Alterações salvas." });
+    },
+    onError: () => {
+      toast({ title: "Erro ao atualizar", description: "Revise os dados e tente novamente.", variant: "destructive" });
+    },
+  });
+
+  const updateRecurrence = useMutation({
+    mutationFn: ({ income, data }) => updateFutureInstances(income, data),
+    onSuccess: ({ updated, failed }) => {
+      queryClient.invalidateQueries({ queryKey: ["incomes"] });
+      setShowForm(false);
+      setEditIncome(null);
+      toast({
+        title: "Série atualizada",
+        description: failed > 0
+          ? `${updated} parcelas ajustadas, ${failed} falharam. Verifique a lista.`
+          : `${updated} parcelas futuras ajustadas.`,
+      });
+    },
+    onError: () => {
+      toast({ title: "Erro na série", description: "Não foi possível atualizar as parcelas futuras.", variant: "destructive" });
+    },
   });
 
   const deleteIncome = useMutation({
     mutationFn: (id) => base44.entities.Income.delete(id),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["incomes"] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["incomes"] });
+      toast({ title: "Entrada removida", description: "O lançamento foi excluído." });
+    },
+    onError: () => {
+      toast({ title: "Erro ao remover", description: "Não foi possível excluir a entrada.", variant: "destructive" });
+    },
   });
 
-  const handleSave = (data) => {
-    if (editIncome) {
-      updateIncome.mutate({ id: editIncome.id, data });
-    } else {
-      createIncome.mutate(data);
+  const handleSave = async (data, options = {}) => {
+    try {
+      if (editIncome) {
+        if (options.scope === "future" && editIncome.recurrence_id) {
+          await updateRecurrence.mutateAsync({ income: editIncome, data });
+        } else {
+          await updateIncome.mutateAsync({ id: editIncome.id, data });
+        }
+      } else {
+        await createIncome.mutateAsync(data);
+      }
+    } catch (error) {
+      console.error("Erro ao salvar entrada", error);
     }
   };
 
@@ -79,8 +230,15 @@ export default function Incomes() {
       .reduce((s, i) => s + (i.amount || 0), 0);
   }, [incomes]);
 
-  const totalAll = incomes.reduce((s, i) => s + (i.amount || 0), 0);
-  const recurrentTotal = incomes.filter(i => i.recurrent).reduce((s, i) => s + (i.amount || 0), 0);
+  const totalAll = useMemo(() => incomes.reduce((s, i) => s + (i.amount || 0), 0), [incomes]);
+
+  const upcomingRecurrenceTotal = useMemo(() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return incomes
+      .filter(i => i.recurrence_id && new Date(i.date) >= today)
+      .reduce((sum, income) => sum + (income.amount || 0), 0);
+  }, [incomes]);
 
   if (isLoading) {
     return (
@@ -106,12 +264,18 @@ export default function Incomes() {
           </Button>
         </motion.div>
 
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.1 }}
+          className="rounded-2xl bg-emerald-500/5 border border-emerald-500/20 text-emerald-200 text-xs sm:text-sm px-4 py-3 mb-6">
+          Entradas marcadas como recorrentes geram 12 lançamentos independentes. Ajuste cada parcela ou aplique
+          mudanças em cadeia usando o campo "Aplicar alterações" ao editar.
+        </motion.div>
+
         {/* Summary Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
           {[
             { label: "Esse Mês", value: totalMonth, icon: TrendingUp, color: "text-emerald-400", bg: "bg-emerald-500/10" },
             { label: "Total Registrado", value: totalAll, icon: Wallet, color: "text-blue-400", bg: "bg-blue-500/10" },
-            { label: "Recorrente/Mês", value: recurrentTotal, icon: RefreshCw, color: "text-violet-400", bg: "bg-violet-500/10" },
+            { label: "Recorrências Futuras", value: upcomingRecurrenceTotal, icon: RefreshCw, color: "text-violet-400", bg: "bg-violet-500/10" },
           ].map((card, i) => (
             <motion.div key={card.label}
               initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.07 }}
@@ -173,15 +337,21 @@ export default function Incomes() {
                           <p className="text-sm font-medium text-white">{income.description}</p>
                           {income.recurrent && (
                             <span className="flex items-center gap-1 text-[10px] text-violet-400 bg-violet-500/10 px-1.5 py-0.5 rounded-full">
-                              <RefreshCw className="w-2.5 h-2.5" /> Recorrente
+                              <RefreshCw className="w-2.5 h-2.5" />
+                              {income.recurrence_id
+                                ? `Parcela ${(income.recurrence_offset || 0) + 1}/${income.recurrence_months || DEFAULT_RECURRENCE_MONTHS}`
+                                : "Recorrente"}
                             </span>
                           )}
                         </div>
-                        <div className="flex items-center gap-2 mt-0.5">
+                        <div className="flex flex-wrap items-center gap-2 mt-0.5">
                           <Badge variant="secondary" className={`text-[10px] border ${cat.color}`}>{cat.label}</Badge>
                           <span className="text-xs text-slate-500">
                             {format(new Date(income.date), "dd MMM yyyy", { locale: ptBR })}
                           </span>
+                          {income.recurrence_id && (
+                            <span className="text-[10px] text-slate-500">Série #{income.recurrence_id.slice(-4)}</span>
+                          )}
                         </div>
                       </div>
                     </div>
