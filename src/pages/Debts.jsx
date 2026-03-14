@@ -254,14 +254,9 @@ export default function Debts() {
   }, [monthFilter]);
 
   const allMonthOptions = useMemo(() => {
-    const currentYear = new Date().getFullYear();
-    const minYear = 2000;
-    const maxYear = currentYear + 1;
     const map = new Map();
     const addMonth = (date) => {
       const normalized = new Date(date.getFullYear(), date.getMonth(), 1);
-       const year = normalized.getFullYear();
-       if (year < minYear || year > maxYear) return;
       const key = getMonthKey(normalized);
       if (!map.has(key)) {
         map.set(key, { value: key, label: formatMonthLabel(normalized) });
@@ -286,14 +281,11 @@ export default function Debts() {
   const yearOptions = useMemo(() => {
     const years = new Set();
     const currentYear = new Date().getFullYear();
-    const minYear = 2000;
-    const maxYear = currentYear + 1;
     allMonthOptions.forEach(opt => {
-      const yearPart = opt.value.split("-")[0];
-      const yearNum = Number(yearPart);
-      if (yearPart && Number.isFinite(yearNum) && yearNum >= minYear && yearNum <= maxYear) {
-        years.add(yearPart);
-      }
+      const yearPart = parseInt(opt.value.split("-")[0], 10);
+      if (!Number.isFinite(yearPart)) return;
+      if (yearPart < 1990 || yearPart > currentYear + 1) return;
+      years.add(String(yearPart));
     });
     return Array.from(years).sort((a, b) => b.localeCompare(a));
   }, [allMonthOptions]);
