@@ -5,7 +5,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { X } from "lucide-react";
+
 
 const CATEGORIES = [
   { value: "cartao_credito", label: "Cartão de Crédito" },
@@ -25,10 +25,23 @@ const PRIORITIES = [
   { value: "urgente", label: "Urgente" },
 ];
 
+const ISO_DATE_ONLY = /^\d{4}-\d{2}-\d{2}$/;
+
+const normalizeDate = (value) => {
+  if (!value) return "";
+  if (ISO_DATE_ONLY.test(value)) return value;
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return "";
+  const local = new Date(parsed.getFullYear(), parsed.getMonth(), parsed.getDate());
+  const month = String(local.getMonth() + 1).padStart(2, "0");
+  const day = String(local.getDate()).padStart(2, "0");
+  return `${local.getFullYear()}-${month}-${day}`;
+};
+
 const defaultForm = {
   creditor: "", description: "", category: "pessoal", total_amount: "",
   total_installments: "1", installment_amount: "", due_day: "",
-  start_date: "", priority: "media", status: "em_dia", notes: "",
+  start_date: normalizeDate(new Date().toISOString().split("T")[0]), priority: "media", status: "em_dia", notes: "",
   paid_amount: "0", paid_installments: "0", credit_card_id: "",
 };
 
@@ -43,6 +56,7 @@ export default function DebtForm({ open, onClose, onSave, editDebt, creditCards 
     paid_amount: String(editDebt.paid_amount || "0"),
     paid_installments: String(editDebt.paid_installments || "0"),
     credit_card_id: editDebt.credit_card_id || "",
+    start_date: normalizeDate(editDebt.start_date || ""),
   } : defaultForm);
 
   const handleChange = (field, value) => setForm(prev => ({ ...prev, [field]: value }));
@@ -72,17 +86,23 @@ export default function DebtForm({ open, onClose, onSave, editDebt, creditCards 
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    const data = {
-      ...form,
+    const payload = {
+      creditor: form.creditor,
+      description: form.description,
+      category: form.category,
       total_amount: parseFloat(form.total_amount) || 0,
-      total_installments: parseInt(form.total_installments) || 1,
+      total_installments: parseInt(form.total_installments, 10) || 1,
       installment_amount: parseFloat(form.installment_amount) || 0,
-      due_day: parseInt(form.due_day) || undefined,
+      due_day: form.due_day ? parseInt(form.due_day, 10) : null,
+      start_date: form.start_date || null,
+      priority: form.priority,
+      status: form.status,
+      notes: form.notes,
       paid_amount: parseFloat(form.paid_amount) || 0,
-      paid_installments: parseInt(form.paid_installments) || 0,
+      paid_installments: parseInt(form.paid_installments, 10) || 0,
       credit_card_id: form.credit_card_id || null,
     };
-    onSave(data);
+    onSave(payload);
   };
 
   return (
@@ -109,12 +129,12 @@ export default function DebtForm({ open, onClose, onSave, editDebt, creditCards 
             <div>
               <Label className="text-xs text-slate-400">Cartão de Crédito</Label>
               {creditCards.length > 0 ? (
-                <Select value={form.credit_card_id || ""} onValueChange={v => handleChange("credit_card_id", v)}>
+                <Select value={form.credit_card_id || "none"} onValueChange={v => handleChange("credit_card_id", v === "none" ? "" : v)}>
                   <SelectTrigger className="bg-white/5 border-white/10 text-white mt-1">
                     <SelectValue placeholder="Vincular cartão" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Sem cartão vinculado</SelectItem>
+                    <SelectItem value="none">Sem cartão vinculado</SelectItem>
                     {creditCards.map(card => (
                       <SelectItem key={card.id} value={card.id}>{card.name}{card.last_four ? ` •••• ${card.last_four}` : ""}</SelectItem>
                     ))}

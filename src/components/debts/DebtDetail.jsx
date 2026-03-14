@@ -31,7 +31,31 @@ function formatCurrency(value) {
   return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value || 0);
 }
 
-export default function DebtDetail({ open, onClose, debt, payments, onEdit, onDelete, onAddPayment, creditCard = null }) {
+const ISO_DATE_ONLY = /^\d{4}-\d{2}-\d{2}$/;
+
+function getLocalDate(value) {
+  if (!value) return null;
+  if (ISO_DATE_ONLY.test(value)) {
+    const [year, month, day] = value.split("-").map(Number);
+    return new Date(year, (month || 1) - 1, day || 1);
+  }
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return null;
+  return new Date(parsed.getFullYear(), parsed.getMonth(), parsed.getDate());
+}
+
+export default function DebtDetail({
+  open,
+  onClose,
+  debt,
+  payments,
+  onEdit,
+  onDelete,
+  onAddPayment,
+  onEditPayment = null,
+  onDeletePayment = null,
+  creditCard = null,
+}) {
   if (!debt) return null;
   const status = STATUS_CONFIG[debt.status] || STATUS_CONFIG.em_dia;
   const progress = debt.total_amount > 0 ? Math.min(((debt.paid_amount || 0) / debt.total_amount) * 100, 100) : 0;
@@ -145,29 +169,62 @@ export default function DebtDetail({ open, onClose, debt, payments, onEdit, onDe
               <p className="text-sm text-slate-500 text-center py-4">Nenhum pagamento registrado</p>
             ) : (
               <div className="space-y-2 max-h-48 overflow-y-auto">
-                {debtPayments.map((p, i) => (
-                  <motion.div
-                    key={p.id}
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ delay: i * 0.05 }}
-                    className="flex items-center justify-between p-3 rounded-xl bg-white/[0.02] border border-white/[0.04]"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center">
-                        <Receipt className="w-4 h-4 text-emerald-400" />
+                {debtPayments.map((p, i) => {
+                  const parsedDate = getLocalDate(p.payment_date);
+                  const fallbackDate = new Date(p.payment_date);
+                  const dateToFormat = parsedDate || (Number.isNaN(fallbackDate.getTime()) ? new Date() : fallbackDate);
+                  return (
+                    <motion.div
+                      key={p.id}
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      transition={{ delay: i * 0.05 }}
+                      className="flex items-center justify-between p-3 rounded-xl bg-white/[0.02] border border-white/[0.04]"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center">
+                          <Receipt className="w-4 h-4 text-emerald-400" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium text-white">{formatCurrency(p.amount)}</p>
+                          <p className="text-xs text-slate-500">
+                            {format(dateToFormat, "dd MMM yyyy", { locale: ptBR })}
+                            {p.method && ` • ${METHOD_LABELS[p.method] || p.method}`}
+                            {p.installment_number && ` • Parcela ${p.installment_number}`}
+                          </p>
+                        </div>
                       </div>
-                      <div>
-                        <p className="text-sm font-medium text-white">{formatCurrency(p.amount)}</p>
-                        <p className="text-xs text-slate-500">
-                          {format(new Date(p.payment_date), "dd MMM yyyy", { locale: ptBR })}
-                          {p.method && ` • ${METHOD_LABELS[p.method] || p.method}`}
-                          {p.installment_number && ` • Parcela ${p.installment_number}`}
-                        </p>
-                      </div>
-                    </div>
-                  </motion.div>
-                ))}
+                      {(onEditPayment || onDeletePayment) && (
+                        <div className="flex items-center gap-1.5">
+                          {onEditPayment && (
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon-sm"
+                              className="text-slate-400 hover:text-white"
+                              onClick={() => onEditPayment(p)}
+                            >
+                              <Pencil className="w-3.5 h-3.5" />
+                              <span className="sr-only">Editar pagamento</span>
+                            </Button>
+                          )}
+                          {onDeletePayment && (
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon-sm"
+                              className="text-red-400 hover:text-red-200"
+                              onClick={() => onDeletePayment(p)}
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                              <span className="sr-only">Excluir pagamento</span>
+                            </Button>
+                          )}
+                        </div>
+                      )}
+                    </motion.div>
+                  );
+                })}
               </div>
             )}
           </div>

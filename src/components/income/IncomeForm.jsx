@@ -39,11 +39,17 @@ export default function IncomeForm({ open, onClose, onSave, editIncome }) {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    onSave({
-      ...form,
+    const recurringDayValue = form.recurrent ? parseInt(form.recurrent_day, 10) || null : null;
+    const payload = {
+      description: form.description,
       amount: parseFloat(form.amount) || 0,
-      recurrent_day: parseInt(form.recurrent_day) || undefined,
-    });
+      date: form.date || new Date().toISOString().split("T")[0],
+      category: form.category,
+      recurrent: !!form.recurrent,
+      recurrent_day: recurringDayValue,
+      notes: form.notes,
+    };
+    onSave(payload);
   };
 
   return (

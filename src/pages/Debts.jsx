@@ -81,9 +81,27 @@ export default function Debts() {
   const [editDebt, setEditDebt] = useState(null);
   const [selectedDebt, setSelectedDebt] = useState(null);
   const [showPaymentForm, setShowPaymentForm] = useState(false);
+  const [editPayment, setEditPayment] = useState(null);
   const [showCardForm, setShowCardForm] = useState(false);
   const [editCard, setEditCard] = useState(null);
   const queryClient = useQueryClient();
+
+  const openPaymentForm = (payment = null) => {
+    setEditPayment(payment);
+    setShowPaymentForm(true);
+  };
+
+  const closePaymentForm = () => {
+    setShowPaymentForm(false);
+    setEditPayment(null);
+  };
+
+  const handleDeletePayment = (payment) => {
+    if (!payment?.id) return;
+    const confirmed = window.confirm(`Deseja remover o pagamento de ${formatCurrency(payment.amount)}? Esta ação não pode ser desfeita.`);
+    if (!confirmed) return;
+    deletePayment.mutate({ id: payment.id, payment });
+  };
 
   useFirebaseRealtime("Debt", ["debts"], "-created_date");
   useFirebaseRealtime("Payment", ["payments"], "-payment_date");
@@ -138,7 +156,68 @@ export default function Debts() {
       }
       queryClient.invalidateQueries({ queryKey: ["debts"] });
       queryClient.invalidateQueries({ queryKey: ["payments"] });
-      setShowPaymentForm(false);
+      closePaymentForm();
+    },
+  });
+
+  const updatePayment = useMutation({
+    mutationFn: ({ id, data }) => base44.entities.Payment.update(id, data),
+    onSuccess: async (_, variables) => {
+      const previousPayment = payments.find(p => p.id === variables.id);
+      const targetDebtId = previousPayment?.debt_id || variables.data?.debt_id;
+      if (previousPayment && targetDebtId) {
+        const relatedDebt = debts.find(d => d.id === targetDebtId);
+        if (relatedDebt) {
+          const prevAmount = parseNumber(previousPayment.amount);
+          const nextAmount = parseNumber(variables.data.amount ?? previousPayment.amount);
+          const totalAmount = parseNumber(relatedDebt.total_amount);
+          const newPaidAmount = Math.max(0, (relatedDebt.paid_amount || 0) - prevAmount + nextAmount);
+          let newStatus = relatedDebt.status;
+          if (totalAmount > 0 && newPaidAmount >= totalAmount) {
+            newStatus = "quitada";
+          } else if (relatedDebt.status === "quitada" && newPaidAmount < totalAmount) {
+            newStatus = "em_dia";
+          }
+          await base44.entities.Debt.update(relatedDebt.id, {
+            paid_amount: newPaidAmount,
+            status: newStatus,
+          });
+        }
+      }
+      queryClient.invalidateQueries({ queryKey: ["debts"] });
+      queryClient.invalidateQueries({ queryKey: ["payments"] });
+      closePaymentForm();
+    },
+  });
+
+  const deletePayment = useMutation({
+    mutationFn: ({ id }) => base44.entities.Payment.delete(id),
+    onSuccess: async (_, variables) => {
+      const payment = variables.payment;
+      const relatedDebtId = payment?.debt_id;
+      if (payment && relatedDebtId) {
+        const relatedDebt = debts.find(d => d.id === relatedDebtId);
+        if (relatedDebt) {
+          const amountToRemove = parseNumber(payment.amount);
+          const newPaidAmount = Math.max(0, (relatedDebt.paid_amount || 0) - amountToRemove);
+          const newPaidInstallments = Math.max(0, (relatedDebt.paid_installments || 0) - 1);
+          const totalAmount = parseNumber(relatedDebt.total_amount);
+          let newStatus = relatedDebt.status;
+          if (relatedDebt.status === "quitada" && newPaidAmount < totalAmount) {
+            newStatus = "em_dia";
+          }
+          await base44.entities.Debt.update(relatedDebt.id, {
+            paid_amount: newPaidAmount,
+            paid_installments: newPaidInstallments,
+            status: newStatus,
+          });
+        }
+      }
+      queryClient.invalidateQueries({ queryKey: ["debts"] });
+      queryClient.invalidateQueries({ queryKey: ["payments"] });
+      if (editPayment?.id === payment?.id) {
+        closePaymentForm();
+      }
     },
   });
 
@@ -587,7 +666,9 @@ export default function Debts() {
           payments={payments}
           onEdit={() => { setEditDebt(selectedDebt); setShowForm(true); }}
           onDelete={() => deleteDebt.mutate(selectedDebt.id)}
-          onAddPayment={() => setShowPaymentForm(true)}
+          onAddPayment={() => openPaymentForm(null)}
+          onEditPayment={(payment) => openPaymentForm(payment)}
+          onDeletePayment={handleDeletePayment}
           creditCard={selectedDebt ? creditCardMap.get(selectedDebt.credit_card_id) : null}
         />
       )}
@@ -595,9 +676,11 @@ export default function Debts() {
       {showPaymentForm && selectedDebt && (
         <PaymentForm
           open={showPaymentForm}
-          onClose={() => setShowPaymentForm(false)}
+          onClose={closePaymentForm}
           onSave={(data) => createPayment.mutate(data)}
+          onUpdate={({ id, data }) => updatePayment.mutate({ id, data })}
           debt={selectedDebt}
+          editPayment={editPayment}
         />
       )}
 

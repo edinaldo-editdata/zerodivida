@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -15,35 +15,81 @@ const METHODS = [
   { value: "outro", label: "Outro" },
 ];
 
-export default function PaymentForm({ open, onClose, onSave, debt }) {
+const ISO_DATE_ONLY = /^\d{4}-\d{2}-\d{2}$/;
+
+const toLocalDate = (value) => {
+  if (!value) return null;
+  if (ISO_DATE_ONLY.test(value)) {
+    const [year, month, day] = value.split("-").map(Number);
+    return new Date(year, (month || 1) - 1, day || 1);
+  }
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return null;
+  return new Date(parsed.getFullYear(), parsed.getMonth(), parsed.getDate());
+};
+
+const formatDateForInput = (value, fallback) => {
+  const parsed = toLocalDate(value);
+  if (!parsed) return fallback;
+  const month = String(parsed.getMonth() + 1).padStart(2, "0");
+  const day = String(parsed.getDate()).padStart(2, "0");
+  return `${parsed.getFullYear()}-${month}-${day}`;
+};
+
+const buildInitialForm = (debt, editPayment) => {
   const today = new Date().toISOString().split("T")[0];
-  const [form, setForm] = useState({
+  if (editPayment) {
+    return {
+      amount: String(editPayment.amount ?? ""),
+      payment_date: formatDateForInput(editPayment.payment_date, today),
+      method: editPayment.method || "pix",
+      installment_number: editPayment.installment_number !== undefined && editPayment.installment_number !== null
+        ? String(editPayment.installment_number)
+        : "",
+      notes: editPayment.notes || "",
+    };
+  }
+  return {
     amount: String(debt?.installment_amount || ""),
     payment_date: today,
     method: "pix",
     installment_number: String((debt?.paid_installments || 0) + 1),
     notes: "",
-  });
+  };
+};
+
+export default function PaymentForm({ open, onClose, onSave, onUpdate, debt, editPayment = null }) {
+  const [form, setForm] = useState(() => buildInitialForm(debt, editPayment));
+
+  useEffect(() => {
+    setForm(buildInitialForm(debt, editPayment));
+  }, [debt?.id, editPayment?.id, open]);
 
   const handleChange = (field, value) => setForm(prev => ({ ...prev, [field]: value }));
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    onSave({
+    const payload = {
       debt_id: debt.id,
       amount: parseFloat(form.amount) || 0,
       payment_date: form.payment_date,
       method: form.method,
       installment_number: parseInt(form.installment_number) || 1,
       notes: form.notes,
-    });
+    };
+
+    if (editPayment && onUpdate) {
+      onUpdate({ id: editPayment.id, data: payload });
+    } else {
+      onSave(payload);
+    }
   };
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="bg-slate-900 border-white/10 text-white max-w-md">
         <DialogHeader>
-          <DialogTitle className="text-lg font-semibold">Registrar Pagamento</DialogTitle>
+          <DialogTitle className="text-lg font-semibold">{editPayment ? "Editar Pagamento" : "Registrar Pagamento"}</DialogTitle>
           <p className="text-sm text-slate-400">{debt?.creditor}</p>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4 mt-2">
@@ -76,7 +122,7 @@ export default function PaymentForm({ open, onClose, onSave, debt }) {
           </div>
           <div className="flex justify-end gap-3 pt-2">
             <Button type="button" variant="ghost" onClick={onClose} className="text-slate-400 hover:text-white">Cancelar</Button>
-            <Button type="submit" className="bg-emerald-600 hover:bg-emerald-700 text-white">Confirmar Pagamento</Button>
+            <Button type="submit" className="bg-emerald-600 hover:bg-emerald-700 text-white">{editPayment ? "Salvar alterações" : "Confirmar Pagamento"}</Button>
           </div>
         </form>
       </DialogContent>
