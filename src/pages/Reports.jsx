@@ -26,7 +26,7 @@ const DEBT_CATEGORY_LABELS = {
 
 const MONTHS = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
 const STORAGE_KEY = "reports_period";
-const BALANCE_STORAGE_KEY = "reports_initial_balance";
+const BALANCE_STORAGE_KEY = "reports_initial_balance_map";
 
 const BASE_PERIOD_OPTIONS = [
   { value: "3m", label: "Últimos 3 meses" },
@@ -73,27 +73,39 @@ export default function Reports() {
     }
     return "6m";
   });
-  const [initialBalance, setInitialBalance] = useState(() => {
-    if (typeof window !== "undefined") {
-      const stored = localStorage.getItem(BALANCE_STORAGE_KEY);
-      return stored ? parseFloat(stored) || 0 : 0;
-    }
-    return 0;
-  });
+  const [initialBalances, setInitialBalances] = useState({});
+  const currentInitialBalance = initialBalances[period] ?? 0;
 
   useEffect(() => {
     if (typeof window === "undefined") {
       return;
     }
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored && stored !== period) {
-      setPeriod(stored);
+    const storedPeriod = localStorage.getItem(STORAGE_KEY);
+    if (storedPeriod && storedPeriod !== period) {
+      setPeriod(storedPeriod);
     }
-    const storedBalance = localStorage.getItem(BALANCE_STORAGE_KEY);
-    if (storedBalance !== null) {
-      const parsed = parseFloat(storedBalance);
-      if (!Number.isNaN(parsed)) {
-        setInitialBalance(parsed);
+
+    const storedMapRaw = localStorage.getItem(BALANCE_STORAGE_KEY);
+    if (storedMapRaw) {
+      try {
+        const parsed = JSON.parse(storedMapRaw);
+        if (parsed && typeof parsed === "object") {
+          setInitialBalances(parsed);
+        }
+      } catch (error) {
+        console.error("Erro ao ler saldos iniciais", error);
+      }
+    } else {
+      const legacy = localStorage.getItem("reports_initial_balance");
+      if (legacy !== null) {
+        const parsedLegacy = parseFloat(legacy);
+        if (!Number.isNaN(parsedLegacy)) {
+          const fallbackPeriod = storedPeriod || period;
+          const map = { [fallbackPeriod]: parsedLegacy };
+          setInitialBalances(map);
+          localStorage.setItem(BALANCE_STORAGE_KEY, JSON.stringify(map));
+          localStorage.removeItem("reports_initial_balance");
+        }
       }
     }
   }, []);
@@ -108,10 +120,7 @@ export default function Reports() {
   const handleInitialBalanceChange = (value) => {
     const parsed = parseFloat(value);
     const safeValue = Number.isNaN(parsed) ? 0 : parsed;
-    setInitialBalance(safeValue);
-    if (typeof window !== "undefined") {
-      localStorage.setItem(BALANCE_STORAGE_KEY, String(safeValue));
-    }
+    setInitialBalances(prev => ({ ...prev, [period]: safeValue }));
   };
 
   useFirebaseRealtime("Income", ["incomes"], "-date");
@@ -188,6 +197,16 @@ export default function Reports() {
     }
   }, [periodOptions, period]);
 
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+    if (Object.keys(initialBalances).length === 0) {
+      return;
+    }
+    localStorage.setItem(BALANCE_STORAGE_KEY, JSON.stringify(initialBalances));
+  }, [initialBalances]);
+
   const periodDefinition = useMemo(() => getPeriodDefinition(period), [period]);
 
   const { monthBuckets, rangeStart, rangeEnd } = useMemo(() => {
@@ -235,12 +254,12 @@ export default function Reports() {
 
   // Accumulated balance
   const accumulatedData = useMemo(() => {
-    let acc = initialBalance || 0;
+    let acc = currentInitialBalance || 0;
     return monthlyData.map(d => {
       acc += d.balance;
       return { ...d, balance: acc };
     });
-  }, [monthlyData, initialBalance]);
+  }, [monthlyData, currentInitialBalance]);
 
   // Summary for selected period
   const periodIncome = monthlyData.reduce((s, d) => s + d.income, 0);
@@ -327,14 +346,14 @@ export default function Reports() {
                       </button>
                     </TooltipTrigger>
                     <TooltipContent side="top" className="bg-slate-900/95 text-slate-100 border border-white/10">
-                      Usado como saldo disponível no primeiro mês do período escolhido. Ajuste ao trocar o intervalo.
+                      Usado como saldo disponível no primeiro mês do período selecionado e salvo por intervalo.
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
               </div>
               <Input
                 type="number"
-                value={initialBalance}
+                value={currentInitialBalance}
                 onChange={e => handleInitialBalanceChange(e.target.value)}
                 className="bg-white/[0.04] border-white/[0.08] text-white"
               />
@@ -354,7 +373,7 @@ export default function Reports() {
         <CashFlowChart data={monthlyData} />
 
         {/* Balance evolution */}
-        <BalanceChart data={accumulatedData} initialBalance={initialBalance} />
+        <BalanceChart data={accumulatedData} initialBalance={currentInitialBalance} />
 
         {/* Categories */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
