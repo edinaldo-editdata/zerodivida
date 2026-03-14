@@ -1,8 +1,9 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "./utils";
-import { LayoutDashboard, List, TrendingUp, BarChart2, Menu, X } from "lucide-react";
+import { LayoutDashboard, List, TrendingUp, BarChart2, Menu, X, Wifi, User, Clock } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useAuth } from "./lib/AuthContext";
 
 const NAV_ITEMS = [
   { name: "Dashboard", icon: LayoutDashboard, page: "Dashboard" },
@@ -13,6 +14,12 @@ const NAV_ITEMS = [
 
 export default function Layout({ children, currentPageName }) {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const { user } = useAuth();
+  const [lastUpdate, setLastUpdate] = useState(new Date());
+
+  useEffect(() => {
+    setLastUpdate(new Date());
+  }, [currentPageName]);
 
   return (
     <div className="h-screen bg-[#0B0F19] flex flex-col overflow-hidden">
@@ -100,6 +107,34 @@ export default function Layout({ children, currentPageName }) {
       <main className="flex-1 overflow-y-auto overflow-x-hidden">
         {children}
       </main>
+
+      {/* Status Bar */}
+      <footer className="flex-none h-7 bg-[#0B0F19] border-t border-white/[0.04] px-4 flex items-center justify-between text-[10px] text-slate-500">
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-1.5">
+            <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.4)]" />
+            <span className="uppercase tracking-wider font-medium text-slate-400">Sistema Online</span>
+          </div>
+          <div className="hidden sm:flex items-center gap-1.5 border-l border-white/[0.04] pl-4">
+            <Wifi className="w-3 h-3" />
+            <span>Firebase Realtime Ativo</span>
+          </div>
+          <div className="hidden md:flex items-center gap-1.5 border-l border-white/[0.04] pl-4">
+            <Clock className="w-3 h-3" />
+            <span>Vencimentos: Hoje</span>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-1.5">
+            <User className="w-3 h-3 text-emerald-500/60" />
+            <span className="text-slate-400">{user?.name || user?.email || "Usuário Local"}</span>
+          </div>
+          <div className="border-l border-white/[0.04] pl-4 text-emerald-500/40 font-mono">
+            v1.2.0-stable
+          </div>
+        </div>
+      </footer>
     </div>
   );
 }
