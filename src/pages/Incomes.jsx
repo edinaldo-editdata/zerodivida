@@ -84,14 +84,14 @@ export default function Incomes() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-[#0B0F19] flex items-center justify-center">
+      <div className="flex items-center justify-center p-20">
         <Loader2 className="w-8 h-8 text-emerald-500 animate-spin" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#0B0F19] text-white">
+    <div className="text-white">
       <div className="w-full px-4 sm:px-8 py-8">
         {/* Header */}
         <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}

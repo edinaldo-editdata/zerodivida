@@ -78,26 +78,26 @@
     --sidebar-ring: oklch(0.556 0 0);
     --sidebar: oklch(0.205 0 0);
   }
+
   .theme {
     --font-sans: 'Geist Variable', sans-serif;
   }
+
   * {
     @apply border-border outline-ring/50;
+    scrollbar-width: none !important;
+    -ms-overflow-style: none !important;
   }
-  body {
-    @apply bg-background text-foreground overflow-x-hidden;
+
+  *::-webkit-scrollbar {
+    display: none !important;
   }
+
+  html, body {
+    @apply bg-background text-foreground overflow-hidden h-full;
+  }
+
   html {
     @apply font-sans;
-  }
-}
-
-@layer base {
-  * {
-    @apply border-border outline-ring/50;
-  }
-
-  body {
-    @apply bg-background text-foreground overflow-x-hidden;
   }
 }

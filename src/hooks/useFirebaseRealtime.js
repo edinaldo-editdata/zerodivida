@@ -21,12 +21,13 @@ export function useFirebaseRealtime(entityName, queryKey, orderByField) {
 
     // Cria a assinatura realtime no Firestore
     const unsubscribe = entity.subscribe(orderByField, (data) => {
+      console.log(`[Hook Realtime] Atualizando QueryKey: ${JSON.stringify(queryKey)}`, data);
       // Atualiza o cache do React Query sem disparar novos fetches
       queryClient.setQueryData(queryKey, data);
     });
 
     return () => {
-      // Cancela a assinatura ao desmontar o componente
+      console.log(`[Hook Realtime] Cancelando assinatura: ${entityName}`);
       unsubscribe();
     };
   }, [entityName, JSON.stringify(queryKey), orderByField, queryClient]);

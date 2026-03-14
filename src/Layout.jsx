@@ -15,9 +15,9 @@ export default function Layout({ children, currentPageName }) {
   const [mobileOpen, setMobileOpen] = useState(false);
 
   return (
-    <div className="min-h-screen bg-[#0B0F19]">
+    <div className="h-screen bg-[#0B0F19] flex flex-col overflow-hidden">
       {/* Top nav */}
-      <nav className="sticky top-0 z-50 bg-[#0B0F19]/80 backdrop-blur-xl border-b border-white/[0.04]">
+      <nav className="flex-none sticky top-0 z-50 bg-[#0B0F19]/80 backdrop-blur-xl border-b border-white/[0.04]">
         <div className="w-full px-4 sm:px-8">
           <div className="flex items-center justify-between h-14">
             <div className="flex items-center gap-6">
@@ -97,7 +97,9 @@ export default function Layout({ children, currentPageName }) {
       </nav>
 
       {/* Content */}
-      {children}
+      <main className="flex-1 overflow-y-auto overflow-x-hidden">
+        {children}
+      </main>
     </div>
   );
 }
