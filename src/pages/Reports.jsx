@@ -326,7 +326,7 @@ export default function Reports() {
                         <Info className="w-3.5 h-3.5" />
                       </button>
                     </TooltipTrigger>
-                    <TooltipContent side="top">
+                    <TooltipContent side="top" className="bg-slate-900/95 text-slate-100 border border-white/10">
                       Usado como saldo disponível no primeiro mês do período escolhido. Ajuste ao trocar o intervalo.
                     </TooltipContent>
                   </Tooltip>
