@@ -1,10 +1,10 @@
 import React from "react";
 import { motion } from "framer-motion";
 import { Badge } from "@/components/ui/badge";
-import { CreditCard, Landmark, Home, Zap, Heart, GraduationCap, User, MoreHorizontal, ChevronRight } from "lucide-react";
+import { CreditCard as CreditCardIcon, Landmark, Home, Zap, Heart, GraduationCap, User, MoreHorizontal, ChevronRight } from "lucide-react";
 
 const CATEGORY_CONFIG = {
-  cartao_credito: { icon: CreditCard, label: "Cartão de Crédito", color: "text-blue-400", bg: "bg-blue-500/10" },
+  cartao_credito: { icon: CreditCardIcon, label: "Cartão de Crédito", color: "text-blue-400", bg: "bg-blue-500/10" },
   emprestimo: { icon: Landmark, label: "Empréstimo", color: "text-purple-400", bg: "bg-purple-500/10" },
   financiamento: { icon: Home, label: "Financiamento", color: "text-amber-400", bg: "bg-amber-500/10" },
   conta_fixa: { icon: Zap, label: "Conta Fixa", color: "text-cyan-400", bg: "bg-cyan-500/10" },
@@ -31,7 +31,7 @@ function formatCurrency(value) {
   return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value || 0);
 }
 
-export default function DebtCard({ debt, index, onClick }) {
+export default function DebtCard({ debt, index, onClick, creditCard }) {
   const cat = CATEGORY_CONFIG[debt.category] || CATEGORY_CONFIG.outro;
   const status = STATUS_CONFIG[debt.status] || STATUS_CONFIG.em_dia;
   const priority = PRIORITY_CONFIG[debt.priority] || PRIORITY_CONFIG.media;
@@ -92,6 +92,13 @@ export default function DebtCard({ debt, index, onClick }) {
         <span className="text-[10px] text-slate-500">{formatCurrency(debt.paid_amount || 0)} pago</span>
         <span className="text-[10px] text-slate-500">{Math.round(progress)}%</span>
       </div>
+      {creditCard && (
+        <div className="flex items-center gap-2 text-[10px] text-slate-400 mt-3">
+          <CreditCardIcon className="w-3.5 h-3.5 text-slate-500" />
+          <span className="truncate">{creditCard.name}</span>
+          {creditCard.last_four && <span className="text-slate-500">•••• {creditCard.last_four}</span>}
+        </div>
+      )}
     </motion.div>
   );
 }

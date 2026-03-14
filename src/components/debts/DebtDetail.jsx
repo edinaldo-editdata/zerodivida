@@ -5,7 +5,16 @@ import { motion } from "framer-motion";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { ArrowLeft, Pencil, Trash2, Plus, Receipt } from "lucide-react";
+import { ArrowLeft, Pencil, Trash2, Plus, Receipt, CreditCard as CreditCardIcon } from "lucide-react";
+
+const CARD_BRANDS = {
+  visa: "Visa",
+  mastercard: "Mastercard",
+  elo: "Elo",
+  amex: "Amex",
+  hipercard: "Hipercard",
+  outro: "Outro",
+};
 
 const STATUS_CONFIG = {
   em_dia: { label: "Em dia", class: "bg-emerald-500/15 text-emerald-400 border-emerald-500/20" },
@@ -22,7 +31,7 @@ function formatCurrency(value) {
   return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value || 0);
 }
 
-export default function DebtDetail({ open, onClose, debt, payments, onEdit, onDelete, onAddPayment }) {
+export default function DebtDetail({ open, onClose, debt, payments, onEdit, onDelete, onAddPayment, creditCard = null }) {
   if (!debt) return null;
   const status = STATUS_CONFIG[debt.status] || STATUS_CONFIG.em_dia;
   const progress = debt.total_amount > 0 ? Math.min(((debt.paid_amount || 0) / debt.total_amount) * 100, 100) : 0;
@@ -98,6 +107,22 @@ export default function DebtDetail({ open, onClose, debt, payments, onEdit, onDe
               </div>
             )}
           </div>
+
+          {creditCard && (
+            <div className="rounded-xl bg-white/[0.03] border border-white/[0.06] p-3">
+              <p className="text-xs text-slate-500 mb-2 uppercase tracking-wider">Cartão vinculado</p>
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-white/10 flex items-center justify-center">
+                  <CreditCardIcon className="w-5 h-5 text-white/80" />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-white">{creditCard.name}</p>
+                  <p className="text-xs text-slate-500">{CARD_BRANDS[creditCard.brand] || "Cartão"}{creditCard.last_four ? ` • •••• ${creditCard.last_four}` : ""}</p>
+                  <p className="text-[11px] text-slate-500">Fecha dia {creditCard.closing_day || "-"} • Paga dia {creditCard.due_day || "-"}</p>
+                </div>
+              </div>
+            </div>
+          )}
 
           {debt.notes && (
             <div className="rounded-xl bg-white/[0.02] border border-white/[0.04] p-3">

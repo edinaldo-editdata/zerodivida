@@ -76,9 +76,10 @@ function createEntityCRUD(entityName) {
 
       return onSnapshot(q, (snapshot) => {
         const items = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+        console.log(`[Firebase Realtime] Atualização em ${entityName}: ${items.length} itens recebidos`);
         callback(items);
       }, (error) => {
-        console.error(`Error subscribing to ${entityName}:`, error);
+        console.error(`[Firebase Realtime] Erro ao assinar ${entityName}:`, error);
       });
     },
 
@@ -179,6 +180,7 @@ export function createClient(config) {
       Debt: createEntityCRUD('Debt'),
       Income: createEntityCRUD('Income'),
       Payment: createEntityCRUD('Payment'),
+      CreditCard: createEntityCRUD('CreditCard'),
     },
     auth: mockAuth,
     appLogs: mockAppLogs,

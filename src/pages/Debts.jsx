@@ -12,6 +12,8 @@ import DebtCard from "@/components/debts/DebtCard";
 import DebtForm from "@/components/debts/DebtForm";
 import DebtDetail from "@/components/debts/DebtDetail";
 import PaymentForm from "@/components/debts/PaymentForm";
+import CreditCardForm from "@/components/credit-cards/CreditCardForm";
+import CreditCardCard from "@/components/credit-cards/CreditCardCard";
 
 const currencyFormatter = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
 
@@ -73,15 +75,19 @@ export default function Debts() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [categoryFilter, setCategoryFilter] = useState("all");
+  const [cardFilter, setCardFilter] = useState("all");
   const [monthFilter, setMonthFilter] = useState(() => getMonthKey(new Date()));
   const [showForm, setShowForm] = useState(false);
   const [editDebt, setEditDebt] = useState(null);
   const [selectedDebt, setSelectedDebt] = useState(null);
   const [showPaymentForm, setShowPaymentForm] = useState(false);
+  const [showCardForm, setShowCardForm] = useState(false);
+  const [editCard, setEditCard] = useState(null);
   const queryClient = useQueryClient();
 
   useFirebaseRealtime("Debt", ["debts"], "-created_date");
   useFirebaseRealtime("Payment", ["payments"], "-payment_date");
+  useFirebaseRealtime("CreditCard", ["creditCards"], "name");
 
   const { data: debts = [], isLoading } = useQuery({
     queryKey: ["debts"],
@@ -91,6 +97,11 @@ export default function Debts() {
   const { data: payments = [] } = useQuery({
     queryKey: ["payments"],
     queryFn: () => base44.entities.Payment.list("-payment_date"),
+  });
+
+  const { data: creditCards = [] } = useQuery({
+    queryKey: ["creditCards"],
+    queryFn: () => base44.entities.CreditCard.list("name"),
   });
 
   const createDebt = useMutation({
@@ -131,6 +142,32 @@ export default function Debts() {
     },
   });
 
+  const createCard = useMutation({
+    mutationFn: (data) => base44.entities.CreditCard.create(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["creditCards"] });
+      setShowCardForm(false);
+      setEditCard(null);
+    },
+  });
+
+  const updateCard = useMutation({
+    mutationFn: ({ id, data }) => base44.entities.CreditCard.update(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["creditCards"] });
+      setShowCardForm(false);
+      setEditCard(null);
+    },
+  });
+
+  const deleteCard = useMutation({
+    mutationFn: (id) => base44.entities.CreditCard.delete(id),
+    onSuccess: (_, id) => {
+      queryClient.invalidateQueries({ queryKey: ["creditCards"] });
+      setCardFilter(prev => prev === id ? "all" : prev);
+    },
+  });
+
   const selectedMonthDate = useMemo(() => {
     if (monthFilter === "all") return null;
     return monthKeyToDate(monthFilter);
@@ -160,6 +197,16 @@ export default function Debts() {
 
     return Array.from(map.values()).sort((a, b) => b.value.localeCompare(a.value));
   }, [debts]);
+
+  const creditCardMap = useMemo(() => {
+    const map = new Map();
+    creditCards.forEach(card => {
+      if (card?.id) {
+        map.set(card.id, card);
+      }
+    });
+    return map;
+  }, [creditCards]);
 
   const filteredDebts = useMemo(() => {
     return debts.filter(d => {
@@ -196,9 +243,15 @@ export default function Debts() {
         }
       })();
 
-      return matchSearch && matchCategory && matchesStatus && matchesMonth;
+      const matchesCard = (() => {
+        if (cardFilter === "all") return true;
+        if (cardFilter === "no_card") return !d.credit_card_id;
+        return d.credit_card_id === cardFilter;
+      })();
+
+      return matchSearch && matchCategory && matchesStatus && matchesMonth && matchesCard;
     });
-  }, [debts, search, statusFilter, categoryFilter, selectedMonthDate]);
+  }, [debts, search, statusFilter, categoryFilter, selectedMonthDate, cardFilter]);
 
   const monthSummary = useMemo(() => {
     if (!selectedMonthDate) return null;
@@ -279,6 +332,19 @@ export default function Debts() {
     }
   };
 
+  const handleSaveCard = (data) => {
+    if (editCard) {
+      updateCard.mutate({ id: editCard.id, data });
+    } else {
+      createCard.mutate(data);
+    }
+  };
+
+  const handleDeleteCard = (card) => {
+    if (!window.confirm(`Deseja remover o cartão ${card.name}?`)) return;
+    deleteCard.mutate(card.id);
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-[#0B0F19] flex items-center justify-center">
@@ -306,6 +372,60 @@ export default function Debts() {
           >
             <Plus className="w-4 h-4 mr-2" /> Nova Dívida
           </Button>
+        </motion.div>
+
+        {/* Credit Cards */}
+        <motion.div
+          initial={{ opacity: 0, y: 6 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.08 }}
+          className="rounded-2xl bg-white/[0.03] border border-white/[0.05] p-4 sm:p-5 mb-6"
+        >
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+            <div>
+              <p className="text-xs uppercase tracking-[0.4em] text-slate-500">Cartões de crédito</p>
+              <h2 className="text-lg font-semibold text-white mt-1">Controle dos cartões vinculados</h2>
+              <p className="text-sm text-slate-500">Cadastre seus cartões para relacionar dívidas e acompanhar limites.</p>
+            </div>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                className="border-white/10 text-slate-200 hover:text-white"
+                onClick={() => { setCardFilter("all"); }}
+              >
+                Limpar filtros
+              </Button>
+              <Button
+                onClick={() => { setEditCard(null); setShowCardForm(true); }}
+                className="bg-emerald-600 hover:bg-emerald-700 text-white"
+              >
+                <Plus className="w-4 h-4 mr-2" /> Novo Cartão
+              </Button>
+            </div>
+          </div>
+          {creditCards.length === 0 ? (
+            <div className="rounded-2xl border border-dashed border-white/[0.1] p-6 text-center text-sm text-slate-400">
+              Nenhum cartão cadastrado. Vincule seus cartões para separar gastos por fatura.
+              <div className="mt-4">
+                <Button onClick={() => { setEditCard(null); setShowCardForm(true); }} className="bg-white/10">
+                  <Plus className="w-4 h-4 mr-2" /> Cadastrar cartão
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+              {creditCards.map(card => (
+                <CreditCardCard
+                  key={card.id}
+                  card={card}
+                  isActive={cardFilter === card.id}
+                  onEdit={() => { setEditCard(card); setShowCardForm(true); }}
+                  onDelete={() => handleDeleteCard(card)}
+                  onFilter={() => setCardFilter(prev => prev === card.id ? "all" : card.id)}
+                />
+              ))}
+            </div>
+          )}
         </motion.div>
 
         {/* Month Filter + Summary */}
@@ -408,6 +528,18 @@ export default function Debts() {
               <SelectItem value="outro">Outro</SelectItem>
             </SelectContent>
           </Select>
+          <Select value={cardFilter} onValueChange={setCardFilter}>
+            <SelectTrigger className="w-full sm:w-48 bg-white/[0.03] border-white/[0.08] text-white">
+              <SelectValue placeholder="Cartão" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos os cartões</SelectItem>
+              <SelectItem value="no_card">Sem cartão</SelectItem>
+              {creditCards.map(card => (
+                <SelectItem key={card.id} value={card.id}>{card.name}{card.last_four ? ` •••• ${card.last_four}` : ""}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </motion.div>
 
         {/* Grid */}
@@ -416,14 +548,20 @@ export default function Debts() {
             <div className="w-16 h-16 rounded-2xl bg-white/[0.03] border border-white/[0.06] flex items-center justify-center mx-auto mb-4">
               <Filter className="w-7 h-7 text-slate-600" />
             </div>
-            <p className="text-slate-400 text-sm">{selectedMonthDate ? "Nenhuma dívida pendente neste mês" : "Nenhuma dívida encontrada"}</p>
-            <p className="text-slate-600 text-xs mt-1">{selectedMonthDate ? "Ajuste o filtro de mês ou registre novos pagamentos" : "Tente ajustar os filtros ou adicione uma nova dívida"}</p>
+            <p className="text-slate-400 text-sm">{selectedMonthDate || cardFilter !== "all" ? "Nenhuma dívida encontrada para os filtros selecionados" : "Nenhuma dívida encontrada"}</p>
+            <p className="text-slate-600 text-xs mt-1">{selectedMonthDate || cardFilter !== "all" ? "Ajuste o filtro de mês/cartão ou registre novos pagamentos" : "Tente ajustar os filtros ou adicione uma nova dívida"}</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             <AnimatePresence>
               {filteredDebts.map((debt, i) => (
-                <DebtCard key={debt.id} debt={debt} index={i} onClick={() => setSelectedDebt(debt)} />
+                <DebtCard
+                  key={debt.id}
+                  debt={debt}
+                  index={i}
+                  onClick={() => setSelectedDebt(debt)}
+                  creditCard={creditCardMap.get(debt.credit_card_id)}
+                />
               ))}
             </AnimatePresence>
           </div>
@@ -437,6 +575,7 @@ export default function Debts() {
           onClose={() => { setShowForm(false); setEditDebt(null); }}
           onSave={handleSaveDebt}
           editDebt={editDebt}
+          creditCards={creditCards}
         />
       )}
 
@@ -449,6 +588,7 @@ export default function Debts() {
           onEdit={() => { setEditDebt(selectedDebt); setShowForm(true); }}
           onDelete={() => deleteDebt.mutate(selectedDebt.id)}
           onAddPayment={() => setShowPaymentForm(true)}
+          creditCard={selectedDebt ? creditCardMap.get(selectedDebt.credit_card_id) : null}
         />
       )}
 
@@ -458,6 +598,15 @@ export default function Debts() {
           onClose={() => setShowPaymentForm(false)}
           onSave={(data) => createPayment.mutate(data)}
           debt={selectedDebt}
+        />
+      )}
+
+      {showCardForm && (
+        <CreditCardForm
+          open={showCardForm}
+          onClose={() => { setShowCardForm(false); setEditCard(null); }}
+          onSave={handleSaveCard}
+          editCard={editCard}
         />
       )}
     </div>

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Plus, Loader2 } from "lucide-react";
@@ -24,6 +24,7 @@ export default function Dashboard() {
   // Ativa Realtime
   useFirebaseRealtime("Debt", ["debts"], "-created_date");
   useFirebaseRealtime("Payment", ["payments"], "-payment_date");
+  useFirebaseRealtime("CreditCard", ["creditCards"], "name");
 
   const { data: debts = [], isLoading } = useQuery({
     queryKey: ["debts"],
@@ -33,6 +34,11 @@ export default function Dashboard() {
   const { data: payments = [] } = useQuery({
     queryKey: ["payments"],
     queryFn: () => base44.entities.Payment.list("-payment_date"),
+  });
+
+  const { data: creditCards = [] } = useQuery({
+    queryKey: ["creditCards"],
+    queryFn: () => base44.entities.CreditCard.list("name"),
   });
 
   const createDebt = useMutation({
@@ -72,6 +78,14 @@ export default function Dashboard() {
       setShowPaymentForm(false);
     },
   });
+
+  const creditCardMap = useMemo(() => {
+    const map = new Map();
+    creditCards.forEach(card => {
+      if (card?.id) map.set(card.id, card);
+    });
+    return map;
+  }, [creditCards]);
 
   const handleSaveDebt = (data) => {
     if (editDebt) {
@@ -175,6 +189,7 @@ export default function Dashboard() {
           onClose={() => { setShowForm(false); setEditDebt(null); }}
           onSave={handleSaveDebt}
           editDebt={editDebt}
+          creditCards={creditCards}
         />
       )}
 
@@ -187,6 +202,7 @@ export default function Dashboard() {
           onEdit={() => { setEditDebt(selectedDebt); setShowForm(true); }}
           onDelete={() => deleteDebt.mutate(selectedDebt.id)}
           onAddPayment={() => setShowPaymentForm(true)}
+          creditCard={selectedDebt ? creditCardMap.get(selectedDebt.credit_card_id) : null}
         />
       )}
 

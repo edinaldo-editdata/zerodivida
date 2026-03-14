@@ -29,10 +29,10 @@ const defaultForm = {
   creditor: "", description: "", category: "pessoal", total_amount: "",
   total_installments: "1", installment_amount: "", due_day: "",
   start_date: "", priority: "media", status: "em_dia", notes: "",
-  paid_amount: "0", paid_installments: "0",
+  paid_amount: "0", paid_installments: "0", credit_card_id: "",
 };
 
-export default function DebtForm({ open, onClose, onSave, editDebt }) {
+export default function DebtForm({ open, onClose, onSave, editDebt, creditCards = [] }) {
   const [form, setForm] = useState(editDebt ? {
     ...defaultForm,
     ...editDebt,
@@ -42,6 +42,7 @@ export default function DebtForm({ open, onClose, onSave, editDebt }) {
     due_day: String(editDebt.due_day || ""),
     paid_amount: String(editDebt.paid_amount || "0"),
     paid_installments: String(editDebt.paid_installments || "0"),
+    credit_card_id: editDebt.credit_card_id || "",
   } : defaultForm);
 
   const handleChange = (field, value) => setForm(prev => ({ ...prev, [field]: value }));
@@ -79,6 +80,7 @@ export default function DebtForm({ open, onClose, onSave, editDebt }) {
       due_day: parseInt(form.due_day) || undefined,
       paid_amount: parseFloat(form.paid_amount) || 0,
       paid_installments: parseInt(form.paid_installments) || 0,
+      credit_card_id: form.credit_card_id || null,
     };
     onSave(data);
   };
@@ -103,6 +105,24 @@ export default function DebtForm({ open, onClose, onSave, editDebt }) {
                   {CATEGORIES.map(c => <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>)}
                 </SelectContent>
               </Select>
+            </div>
+            <div>
+              <Label className="text-xs text-slate-400">Cartão de Crédito</Label>
+              {creditCards.length > 0 ? (
+                <Select value={form.credit_card_id || ""} onValueChange={v => handleChange("credit_card_id", v)}>
+                  <SelectTrigger className="bg-white/5 border-white/10 text-white mt-1">
+                    <SelectValue placeholder="Vincular cartão" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">Sem cartão vinculado</SelectItem>
+                    {creditCards.map(card => (
+                      <SelectItem key={card.id} value={card.id}>{card.name}{card.last_four ? ` •••• ${card.last_four}` : ""}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ) : (
+                <p className="text-xs text-slate-500 mt-2">Cadastre um cartão para vincular esta dívida.</p>
+              )}
             </div>
             <div>
               <Label className="text-xs text-slate-400">Prioridade</Label>

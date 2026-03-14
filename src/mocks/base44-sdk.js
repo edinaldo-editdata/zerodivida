@@ -151,6 +151,7 @@ export function createClient(config) {
       Debt: createEntityCRUD('Debt'),
       Income: createEntityCRUD('Income'),
       Payment: createEntityCRUD('Payment'),
+      CreditCard: createEntityCRUD('CreditCard'),
     },
     auth: mockAuth,
     appLogs: mockAppLogs,
