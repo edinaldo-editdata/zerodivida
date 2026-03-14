@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Input } from "@/components/ui/input";
@@ -77,6 +77,7 @@ export default function Debts() {
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [cardFilter, setCardFilter] = useState("all");
   const [monthFilter, setMonthFilter] = useState(() => getMonthKey(new Date()));
+  const [yearFilter, setYearFilter] = useState("all");
   const [showForm, setShowForm] = useState(false);
   const [editDebt, setEditDebt] = useState(null);
   const [selectedDebt, setSelectedDebt] = useState(null);
@@ -252,10 +253,15 @@ export default function Debts() {
     return monthKeyToDate(monthFilter);
   }, [monthFilter]);
 
-  const monthOptions = useMemo(() => {
+  const allMonthOptions = useMemo(() => {
+    const currentYear = new Date().getFullYear();
+    const minYear = 2000;
+    const maxYear = currentYear + 1;
     const map = new Map();
     const addMonth = (date) => {
       const normalized = new Date(date.getFullYear(), date.getMonth(), 1);
+       const year = normalized.getFullYear();
+       if (year < minYear || year > maxYear) return;
       const key = getMonthKey(normalized);
       if (!map.has(key)) {
         map.set(key, { value: key, label: formatMonthLabel(normalized) });
@@ -276,6 +282,43 @@ export default function Debts() {
 
     return Array.from(map.values()).sort((a, b) => b.value.localeCompare(a.value));
   }, [debts]);
+
+  const yearOptions = useMemo(() => {
+    const years = new Set();
+    const currentYear = new Date().getFullYear();
+    const minYear = 2000;
+    const maxYear = currentYear + 1;
+    allMonthOptions.forEach(opt => {
+      const yearPart = opt.value.split("-")[0];
+      const yearNum = Number(yearPart);
+      if (yearPart && Number.isFinite(yearNum) && yearNum >= minYear && yearNum <= maxYear) {
+        years.add(yearPart);
+      }
+    });
+    return Array.from(years).sort((a, b) => b.localeCompare(a));
+  }, [allMonthOptions]);
+
+  const monthOptions = useMemo(() => {
+    if (yearFilter === "all") return allMonthOptions;
+    return allMonthOptions.filter(opt => opt.value.startsWith(`${yearFilter}-`));
+  }, [allMonthOptions, yearFilter]);
+
+  useEffect(() => {
+    if (yearFilter === "all") return;
+    if (monthFilter === "all") return;
+    if (!monthFilter.startsWith(`${yearFilter}-`)) {
+      setMonthFilter("all");
+    }
+  }, [yearFilter, monthFilter]);
+
+  const currentPeriodLabel = useMemo(() => {
+    if (monthFilter === "all") {
+      return yearFilter === "all" ? "Todos os meses" : `Ano ${yearFilter}`;
+    }
+    const match = allMonthOptions.find(opt => opt.value === monthFilter);
+    if (match) return match.label;
+    return formatMonthLabel(selectedMonthDate || new Date());
+  }, [monthFilter, yearFilter, allMonthOptions, selectedMonthDate]);
 
   const creditCardMap = useMemo(() => {
     const map = new Map();
@@ -518,21 +561,39 @@ export default function Debts() {
             <div>
               <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Mês de referência</p>
               <p className="text-lg font-semibold text-white mt-1">
-                {monthFilter === "all" ? "Todos os meses" : (monthOptions.find(opt => opt.value === monthFilter)?.label || formatMonthLabel(selectedMonthDate || new Date()))}
+                {currentPeriodLabel}
               </p>
               <p className="text-sm text-slate-500">Selecione um mês para visualizar os vencimentos previstos e pendentes.</p>
             </div>
-            <Select value={monthFilter} onValueChange={setMonthFilter}>
-              <SelectTrigger className="w-full sm:w-60 bg-white/[0.03] border-white/[0.08] text-white">
-                <SelectValue placeholder="Filtrar por mês" />
-              </SelectTrigger>
-              <SelectContent className="max-h-72">
-                <SelectItem value="all">Todos os meses</SelectItem>
-                {monthOptions.map(option => (
-                  <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+              <Select value={yearFilter} onValueChange={setYearFilter}>
+                <SelectTrigger className="w-full sm:w-36 bg-white/[0.03] border-white/[0.08] text-white">
+                  <SelectValue placeholder="Ano" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos os anos</SelectItem>
+                  {yearOptions.map(year => (
+                    <SelectItem key={year} value={year}>{year}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select value={monthFilter} onValueChange={setMonthFilter}>
+                <SelectTrigger className="w-full sm:w-60 bg-white/[0.03] border-white/[0.08] text-white">
+                  <SelectValue placeholder="Filtrar por mês" />
+                </SelectTrigger>
+                <SelectContent className="max-h-72">
+                  <SelectItem value="all">Todos os meses</SelectItem>
+                  {monthOptions.length === 0 && yearFilter !== "all" && (
+                    <SelectItem value="__no_months" disabled>
+                      Nenhum mês disponível para {yearFilter}
+                    </SelectItem>
+                  )}
+                  {monthOptions.map(option => (
+                    <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
 
           {selectedMonthDate && (
