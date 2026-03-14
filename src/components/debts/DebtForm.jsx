@@ -166,13 +166,13 @@ export default function DebtForm({ open, onClose, onSave, editDebt, creditCards 
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="bg-slate-900 border-white/10 text-white max-w-lg max-h-[90vh] overflow-y-auto">
+      <DialogContent className="bg-slate-900 border-white/10 text-white max-w-4xl w-full max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-lg font-semibold">{editDebt ? "Editar Dívida" : "Nova Dívida"}</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4 mt-2">
-          <div className="grid grid-cols-2 gap-3">
-            <div className="col-span-2">
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+            <div className="col-span-full">
               <Label className="text-xs text-slate-400">Credor / Instituição *</Label>
               <Input value={form.creditor} onChange={e => handleChange("creditor", e.target.value)} required placeholder="Ex: Nubank" className="bg-white/5 border-white/10 text-white mt-1" />
             </div>
@@ -185,7 +185,7 @@ export default function DebtForm({ open, onClose, onSave, editDebt, creditCards 
                 </SelectContent>
               </Select>
             </div>
-            <div className="col-span-2">
+            <div className="col-span-full">
               <Label className="text-xs text-slate-400 flex items-center justify-between">
                 <span>Nova categoria personalizada</span>
                 <span className="text-[10px] text-slate-500">Será salva para próximos usos</span>
@@ -290,11 +290,11 @@ export default function DebtForm({ open, onClose, onSave, editDebt, creditCards 
                 </SelectContent>
               </Select>
             </div>
-            <div className="col-span-2">
+            <div className="col-span-full">
               <Label className="text-xs text-slate-400">Descrição</Label>
               <Input value={form.description} onChange={e => handleChange("description", e.target.value)} placeholder="Descrição breve" className="bg-white/5 border-white/10 text-white mt-1" />
             </div>
-            <div className="col-span-2">
+            <div className="col-span-full">
               <Label className="text-xs text-slate-400">Observações</Label>
               <Textarea value={form.notes} onChange={e => handleChange("notes", e.target.value)} placeholder="Notas adicionais..." rows={2} className="bg-white/5 border-white/10 text-white mt-1 resize-none" />
             </div>
