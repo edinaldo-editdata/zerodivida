@@ -4,7 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectSeparator, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Plus, Search, Loader2, Pencil, Trash2, TrendingUp, RefreshCw, Wallet } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { format } from "date-fns";
@@ -21,6 +21,9 @@ const CATEGORY_CONFIG = {
   aluguel:      { label: "Aluguel",      color: "bg-amber-500/15 text-amber-400 border-amber-500/20",       dot: "bg-amber-400" },
   bonus:        { label: "Bônus",        color: "bg-pink-500/15 text-pink-400 border-pink-500/20",          dot: "bg-pink-400" },
   presente:     { label: "Presente",     color: "bg-rose-500/15 text-rose-400 border-rose-500/20",          dot: "bg-rose-400" },
+  venda:        { label: "Venda",        color: "bg-cyan-500/15 text-cyan-400 border-cyan-500/20",          dot: "bg-cyan-400" },
+  reembolso:    { label: "Reembolso",    color: "bg-orange-500/15 text-orange-400 border-orange-500/20",    dot: "bg-orange-400" },
+  personalizado: { label: "Personalizado", color: "bg-indigo-500/15 text-indigo-400 border-indigo-500/20", dot: "bg-indigo-400" },
   outro:        { label: "Outro",        color: "bg-slate-500/15 text-slate-400 border-slate-500/20",       dot: "bg-slate-400" },
 };
 
@@ -216,9 +219,18 @@ export default function Incomes() {
 
   const filtered = useMemo(() => incomes.filter(i => {
     const matchSearch = !search || i.description?.toLowerCase().includes(search.toLowerCase());
-    const matchCat = categoryFilter === "all" || i.category === categoryFilter;
+    const matchCat = categoryFilter === "all" || 
+                    i.category === categoryFilter || 
+                    (i.category === "personalizado" && i.custom_category === categoryFilter);
     return matchSearch && matchCat;
   }), [incomes, search, categoryFilter]);
+
+  const existingCustomCategories = useMemo(() => {
+    const categories = incomes
+      .filter(i => i.category === "personalizado" && i.custom_category)
+      .map(i => i.custom_category);
+    return Array.from(new Set(categories)).sort();
+  }, [incomes]);
 
   const totalMonth = useMemo(() => {
     const now = new Date();
@@ -308,6 +320,17 @@ export default function Incomes() {
               {Object.entries(CATEGORY_CONFIG).map(([k, v]) => (
                 <SelectItem key={k} value={k}>{v.label}</SelectItem>
               ))}
+              {existingCustomCategories.length > 0 && (
+                <>
+                  <SelectSeparator className="bg-white/10" />
+                  <SelectGroup>
+                    <SelectLabel className="text-indigo-400">Suas Categorias</SelectLabel>
+                    {existingCustomCategories.map(cat => (
+                      <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                    ))}
+                  </SelectGroup>
+                </>
+              )}
             </SelectContent>
           </Select>
         </div>
@@ -324,7 +347,10 @@ export default function Incomes() {
           <div className="space-y-2">
             <AnimatePresence>
               {filtered.map((income, i) => {
-                const cat = CATEGORY_CONFIG[income.category] || CATEGORY_CONFIG.outro;
+                const isCustom = income.category === "personalizado" && income.custom_category;
+                const cat = isCustom 
+                  ? { ...CATEGORY_CONFIG.personalizado, label: income.custom_category }
+                  : (CATEGORY_CONFIG[income.category] || CATEGORY_CONFIG.outro);
                 return (
                   <motion.div key={income.id}
                     initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 10 }}
@@ -382,6 +408,7 @@ export default function Incomes() {
           onClose={() => { setShowForm(false); setEditIncome(null); }}
           onSave={handleSave}
           editIncome={editIncome}
+          existingCustomCategories={existingCustomCategories}
         />
       )}
     </div>

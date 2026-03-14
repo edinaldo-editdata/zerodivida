@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 
-const CATEGORIES = [
+const BASE_CATEGORIES = [
   { value: "cartao_credito", label: "Cartão de Crédito" },
   { value: "emprestimo", label: "Empréstimo" },
   { value: "financiamento", label: "Financiamento" },
@@ -17,6 +17,8 @@ const CATEGORIES = [
   { value: "pessoal", label: "Pessoal" },
   { value: "outro", label: "Outro" },
 ];
+
+const CUSTOM_CATEGORIES_KEY = "debt_custom_categories";
 
 const PRIORITIES = [
   { value: "baixa", label: "Baixa" },
@@ -59,7 +61,64 @@ export default function DebtForm({ open, onClose, onSave, editDebt, creditCards 
     start_date: normalizeDate(editDebt.start_date || ""),
   } : defaultForm);
 
+  const [customCategories, setCustomCategories] = useState(() => {
+    if (typeof window === "undefined") return [];
+    try {
+      const stored = localStorage.getItem(CUSTOM_CATEGORIES_KEY);
+      return stored ? JSON.parse(stored) : [];
+    } catch (error) {
+      console.error("Erro ao carregar categorias personalizadas", error);
+      return [];
+    }
+  });
+  const [newCategory, setNewCategory] = useState("");
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      localStorage.setItem(CUSTOM_CATEGORIES_KEY, JSON.stringify(customCategories));
+    } catch (error) {
+      console.error("Erro ao salvar categorias personalizadas", error);
+    }
+  }, [customCategories]);
+
+  const formatCategoryLabel = (value) => value
+    .split(/[_-]/)
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
+
+  const categoryOptions = [...BASE_CATEGORIES, ...customCategories];
+
   const handleChange = (field, value) => setForm(prev => ({ ...prev, [field]: value }));
+
+  const slugifyCategory = (label) => label
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[^a-z0-9\s-]/g, "")
+    .trim()
+    .replace(/\s+/g, "_")
+    || "categoria_personalizada";
+
+  const handleAddCustomCategory = () => {
+    const label = newCategory.trim();
+    if (!label) return;
+    const value = slugifyCategory(label);
+    if (!categoryOptions.some(cat => cat.value === value)) {
+      setCustomCategories(prev => [...prev, { value, label }]);
+    }
+    setForm(prev => ({ ...prev, category: value }));
+    setNewCategory("");
+  };
+
+  useEffect(() => {
+    if (!form.category) return;
+    const exists = categoryOptions.some(cat => cat.value === form.category);
+    if (!exists) {
+      const label = formatCategoryLabel(form.category);
+      setCustomCategories(prev => [...prev, { value: form.category, label }]);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [form.category]);
 
   // Cálculo automático de valores
   useEffect(() => {
@@ -122,9 +181,27 @@ export default function DebtForm({ open, onClose, onSave, editDebt, creditCards 
               <Select value={form.category} onValueChange={v => handleChange("category", v)}>
                 <SelectTrigger className="bg-white/5 border-white/10 text-white mt-1"><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  {CATEGORIES.map(c => <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>)}
+                  {categoryOptions.map(c => <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>)}
                 </SelectContent>
               </Select>
+            </div>
+            <div className="col-span-2">
+              <Label className="text-xs text-slate-400 flex items-center justify-between">
+                <span>Nova categoria personalizada</span>
+                <span className="text-[10px] text-slate-500">Será salva para próximos usos</span>
+              </Label>
+              <div className="flex flex-col sm:flex-row gap-2 mt-1">
+                <Input
+                  value={newCategory}
+                  onChange={e => setNewCategory(e.target.value)}
+                  placeholder="Ex: Assinaturas de streaming"
+                  className="bg-white/5 border-white/10 text-white flex-1"
+                />
+                <Button type="button" onClick={handleAddCustomCategory} disabled={!newCategory.trim()}
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white whitespace-nowrap">
+                  Adicionar categoria
+                </Button>
+              </div>
             </div>
             <div>
               <Label className="text-xs text-slate-400">Cartão de Crédito</Label>

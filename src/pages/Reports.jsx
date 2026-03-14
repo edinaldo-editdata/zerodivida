@@ -17,7 +17,8 @@ import MonthlyDebtChart from "@/components/dashboard/MonthlyDebtChart";
 
 const INCOME_CATEGORY_LABELS = {
   salario: "Salário", freelance: "Freelance", investimento: "Investimento",
-  aluguel: "Aluguel", bonus: "Bônus", presente: "Presente", outro: "Outro",
+  aluguel: "Aluguel", bonus: "Bônus", presente: "Presente",
+  venda: "Venda", reembolso: "Reembolso", personalizado: "Personalizado", outro: "Outro",
 };
 const DEBT_CATEGORY_LABELS = {
   cartao_credito: "Cartão de Crédito", emprestimo: "Empréstimo", financiamento: "Financiamento",
@@ -279,7 +280,8 @@ export default function Reports() {
         return date >= rangeStart && (!rangeEnd || date <= rangeEnd);
       })
       .forEach(i => {
-        map[i.category] = (map[i.category] || 0) + (i.amount || 0);
+        const catKey = (i.category === "personalizado" && i.custom_category) ? i.custom_category : i.category;
+        map[catKey] = (map[catKey] || 0) + (i.amount || 0);
       });
     return Object.entries(map).map(([k, v]) => ({ label: INCOME_CATEGORY_LABELS[k] || k, value: v }));
   }, [incomes, rangeStart, rangeEnd]);
