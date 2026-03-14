@@ -16,12 +16,12 @@ const CustomTooltip = ({ active, payload, label }) => {
   );
 };
 
-export default function BalanceChart({ data }) {
+export default function BalanceChart({ data, initialBalance = 0 }) {
   const hasNegative = data.some(d => d.balance < 0);
   return (
     <div className="rounded-2xl bg-white/[0.03] border border-white/[0.06] p-6">
       <h3 className="text-sm font-medium text-slate-400 uppercase tracking-wider mb-1">Saldo Acumulado</h3>
-      <p className="text-xs text-slate-600 mb-5">Evolução do saldo ao longo dos meses</p>
+      <p className="text-xs text-slate-600 mb-5">Evolução do saldo ao longo dos meses (saldo inicial {formatCurrency(initialBalance)})</p>
       <div className="h-64">
         <ResponsiveContainer width="100%" height="100%">
           <AreaChart data={data} margin={{ top: 5, right: 5, left: -15, bottom: 5 }}>

@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect } from "react";
+import { Input } from "@/components/ui/input";
 import { base44 } from "@/api/base44Client";
 import { useQuery } from "@tanstack/react-query";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -24,6 +25,7 @@ const DEBT_CATEGORY_LABELS = {
 
 const MONTHS = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
 const STORAGE_KEY = "reports_period";
+const BALANCE_STORAGE_KEY = "reports_initial_balance";
 
 const BASE_PERIOD_OPTIONS = [
   { value: "3m", label: "Últimos 3 meses" },
@@ -70,6 +72,13 @@ export default function Reports() {
     }
     return "6m";
   });
+  const [initialBalance, setInitialBalance] = useState(() => {
+    if (typeof window !== "undefined") {
+      const stored = localStorage.getItem(BALANCE_STORAGE_KEY);
+      return stored ? parseFloat(stored) || 0 : 0;
+    }
+    return 0;
+  });
 
   useEffect(() => {
     if (typeof window === "undefined") {
@@ -79,12 +88,28 @@ export default function Reports() {
     if (stored && stored !== period) {
       setPeriod(stored);
     }
+    const storedBalance = localStorage.getItem(BALANCE_STORAGE_KEY);
+    if (storedBalance !== null) {
+      const parsed = parseFloat(storedBalance);
+      if (!Number.isNaN(parsed)) {
+        setInitialBalance(parsed);
+      }
+    }
   }, []);
 
   const handlePeriodChange = (value) => {
     setPeriod(value);
     if (typeof window !== "undefined") {
       localStorage.setItem(STORAGE_KEY, value);
+    }
+  };
+
+  const handleInitialBalanceChange = (value) => {
+    const parsed = parseFloat(value);
+    const safeValue = Number.isNaN(parsed) ? 0 : parsed;
+    setInitialBalance(safeValue);
+    if (typeof window !== "undefined") {
+      localStorage.setItem(BALANCE_STORAGE_KEY, String(safeValue));
     }
   };
 
@@ -209,12 +234,12 @@ export default function Reports() {
 
   // Accumulated balance
   const accumulatedData = useMemo(() => {
-    let acc = 0;
+    let acc = initialBalance || 0;
     return monthlyData.map(d => {
       acc += d.balance;
       return { ...d, balance: acc };
     });
-  }, [monthlyData]);
+  }, [monthlyData, initialBalance]);
 
   // Summary for selected period
   const periodIncome = monthlyData.reduce((s, d) => s + d.income, 0);
@@ -271,21 +296,32 @@ export default function Reports() {
       <div className="w-full px-4 sm:px-8 py-8 space-y-8">
         {/* Header */}
         <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}
-          className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
           <div>
             <h1 className="text-2xl font-bold tracking-tight">Relatórios</h1>
             <p className="text-sm text-slate-500 mt-0.5">Análise financeira detalhada</p>
           </div>
-          <Select value={period} onValueChange={handlePeriodChange}>
-            <SelectTrigger className="w-48 bg-white/[0.04] border-white/[0.08] text-white">
-              <SelectValue placeholder="Período" />
-            </SelectTrigger>
-            <SelectContent>
-              {periodOptions.map(o => (
-                <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center w-full lg:w-auto">
+            <Select value={period} onValueChange={handlePeriodChange}>
+              <SelectTrigger className="w-full sm:w-48 bg-white/[0.04] border-white/[0.08] text-white">
+                <SelectValue placeholder="Período" />
+              </SelectTrigger>
+              <SelectContent>
+                {periodOptions.map(o => (
+                  <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <div className="flex flex-col">
+              <label className="text-xs text-slate-500">Saldo inicial</label>
+              <Input
+                type="number"
+                value={initialBalance}
+                onChange={e => handleInitialBalanceChange(e.target.value)}
+                className="bg-white/[0.04] border-white/[0.08] text-white"
+              />
+            </div>
+          </div>
         </motion.div>
 
         {/* Summary */}
@@ -300,7 +336,7 @@ export default function Reports() {
         <CashFlowChart data={monthlyData} />
 
         {/* Balance evolution */}
-        <BalanceChart data={accumulatedData} />
+        <BalanceChart data={accumulatedData} initialBalance={initialBalance} />
 
         {/* Categories */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
