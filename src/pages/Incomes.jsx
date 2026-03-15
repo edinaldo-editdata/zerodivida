@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Input } from "@/components/ui/input";
@@ -31,9 +31,19 @@ function formatCurrency(value) {
   return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value || 0);
 }
 
+function getMonthKey(date) {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+}
+
+function formatMonth(date) {
+  return format(date, "MMM yyyy", { locale: ptBR }).replace(".", "");
+}
+
 export default function Incomes() {
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("all");
+  const [yearFilter, setYearFilter] = useState("all");
+  const [monthFilter, setMonthFilter] = useState("all");
   const [showForm, setShowForm] = useState(false);
   const [editIncome, setEditIncome] = useState(null);
   const queryClient = useQueryClient();
@@ -217,13 +227,22 @@ export default function Incomes() {
     }
   };
 
-  const filtered = useMemo(() => incomes.filter(i => {
+  const periodFiltered = useMemo(() => incomes.filter(i => {
+    if (yearFilter === "all" && monthFilter === "all") return true;
+    const d = new Date(i.date);
+    if (Number.isNaN(d.getTime())) return false;
+    if (yearFilter !== "all" && String(d.getFullYear()) !== yearFilter) return false;
+    if (monthFilter !== "all" && getMonthKey(d) !== monthFilter) return false;
+    return true;
+  }), [incomes, yearFilter, monthFilter]);
+
+  const filtered = useMemo(() => periodFiltered.filter(i => {
     const matchSearch = !search || i.description?.toLowerCase().includes(search.toLowerCase());
     const matchCat = categoryFilter === "all" || 
                     i.category === categoryFilter || 
                     (i.category === "personalizado" && i.custom_category === categoryFilter);
     return matchSearch && matchCat;
-  }), [incomes, search, categoryFilter]);
+  }), [periodFiltered, search, categoryFilter]);
 
   const existingCustomCategories = useMemo(() => {
     const categories = incomes
@@ -231,6 +250,46 @@ export default function Incomes() {
       .map(i => i.custom_category);
     return Array.from(new Set(categories)).sort();
   }, [incomes]);
+
+  const yearOptions = useMemo(() => {
+    const years = new Set();
+    incomes.forEach(income => {
+      if (!income?.date) return;
+      const d = new Date(income.date);
+      if (!Number.isNaN(d.getTime())) {
+        years.add(String(d.getFullYear()));
+      }
+    });
+    return Array.from(years).sort((a, b) => b.localeCompare(a));
+  }, [incomes]);
+
+  const allMonthOptions = useMemo(() => {
+    const map = new Map();
+    incomes.forEach(income => {
+      if (!income?.date) return;
+      const d = new Date(income.date);
+      if (Number.isNaN(d.getTime())) return;
+      const key = getMonthKey(d);
+      if (!map.has(key)) {
+        map.set(key, { value: key, label: formatMonth(new Date(d.getFullYear(), d.getMonth(), 1)), year: String(d.getFullYear()) });
+      }
+    });
+    return Array.from(map.values()).sort((a, b) => b.value.localeCompare(a.value));
+  }, [incomes]);
+
+  const monthOptions = useMemo(() => {
+    if (yearFilter === "all") return allMonthOptions;
+    return allMonthOptions.filter(opt => opt.year === yearFilter);
+  }, [allMonthOptions, yearFilter]);
+
+  useEffect(() => {
+    if (yearFilter === "all") return;
+    if (monthFilter === "all") return;
+    const selected = monthOptions.some(opt => opt.value === monthFilter);
+    if (!selected) {
+      setMonthFilter("all");
+    }
+  }, [yearFilter, monthFilter, monthOptions]);
 
   const totalMonth = useMemo(() => {
     const now = new Date();
@@ -255,6 +314,8 @@ export default function Incomes() {
   const handleClearFilters = () => {
     setSearch("");
     setCategoryFilter("all");
+    setYearFilter("all");
+    setMonthFilter("all");
   };
 
   if (isLoading) {
@@ -309,13 +370,40 @@ export default function Incomes() {
         </div>
 
         {/* Filters */}
-        <div className="flex flex-col sm:flex-row gap-3 mb-6">
+        <div className="flex flex-col lg:flex-row gap-3 mb-6">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
             <Input value={search} onChange={e => setSearch(e.target.value)}
               placeholder="Buscar entradas..."
               className="pl-9 bg-white/[0.03] border-white/[0.08] text-white placeholder:text-slate-500" />
           </div>
+          <Select value={yearFilter} onValueChange={setYearFilter}>
+            <SelectTrigger className="w-full sm:w-36 bg-white/[0.03] border-white/[0.08] text-white">
+              <SelectValue placeholder="Ano" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos os anos</SelectItem>
+              {yearOptions.map(year => (
+                <SelectItem key={year} value={year}>{year}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select value={monthFilter} onValueChange={setMonthFilter}>
+            <SelectTrigger className="w-full sm:w-44 bg-white/[0.03] border-white/[0.08] text-white">
+              <SelectValue placeholder="Mês" />
+            </SelectTrigger>
+            <SelectContent className="max-h-64">
+              <SelectItem value="all">Todos os meses</SelectItem>
+              {monthOptions.length === 0 && yearFilter !== "all" && (
+                <SelectItem value="__no_month" disabled>
+                  Nenhum mês disponível
+                </SelectItem>
+              )}
+              {monthOptions.map(opt => (
+                <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
           <Select value={categoryFilter} onValueChange={setCategoryFilter}>
             <SelectTrigger className="w-full sm:w-44 bg-white/[0.03] border-white/[0.08] text-white">
               <SelectValue placeholder="Categoria" />
