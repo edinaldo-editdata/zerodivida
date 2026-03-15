@@ -5,6 +5,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import DatePicker from "@/components/ui/date-picker";
 
 
 const BASE_CATEGORIES = [
@@ -100,6 +101,14 @@ export default function DebtForm({ open, onClose, onSave, editDebt, creditCards 
     recurrence: editDebt.recurrence || "none",
     recurrence_count: String(editDebt.recurrence_count || ""),
   } : defaultForm);
+
+  // Debug: log da data normalizada
+  React.useEffect(() => {
+    if (open && editDebt) {
+      console.log('[DebtForm] Data original:', editDebt.start_date);
+      console.log('[DebtForm] Data normalizada:', normalizeDate(editDebt.start_date));
+    }
+  }, [open, editDebt]);
 
   const [customCategories, setCustomCategories] = useState(() => {
     if (typeof window === "undefined") return [];
@@ -315,7 +324,11 @@ export default function DebtForm({ open, onClose, onSave, editDebt, creditCards 
             </div>
             <div>
               <Label className="text-xs text-slate-400">Data Início</Label>
-              <Input type="date" value={form.start_date} onChange={e => handleChange("start_date", e.target.value)} className="bg-white/5 border-white/10 text-white mt-1" />
+              <DatePicker
+                value={form.start_date}
+                onChange={(v) => handleChange("start_date", v)}
+                placeholder="Selecione uma data"
+              />
             </div>
             <div>
               <Label className="text-xs text-slate-400">Valor Já Pago</Label>
