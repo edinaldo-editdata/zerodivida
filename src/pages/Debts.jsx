@@ -40,11 +40,33 @@ function parseNumber(value, fallback = 0) {
   return Number.isFinite(parsed) ? parsed : fallback;
 }
 
+const ISO_DATE_ONLY = /^\d{4}-\d{2}-\d{2}$/;
+
+function getLocalDate(value) {
+  if (!value) return null;
+  if (typeof value === "string") {
+    if (ISO_DATE_ONLY.test(value)) {
+      const [year, month, day] = value.split("-").map(Number);
+      if (Number.isFinite(year) && Number.isFinite(month) && Number.isFinite(day)) {
+        return new Date(year, month - 1, day);
+      }
+    }
+    const parsed = new Date(value.includes("T") ? value : `${value}T00:00:00`);
+    if (!Number.isNaN(parsed.getTime())) {
+      return new Date(parsed.getFullYear(), parsed.getMonth(), parsed.getDate());
+    }
+    return null;
+  }
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return null;
+  return new Date(parsed.getFullYear(), parsed.getMonth(), parsed.getDate());
+}
+
 function getReferenceDate(debt) {
   const source = debt.start_date || debt.created_date;
   if (!source) return null;
-  const parsed = new Date(source);
-  if (Number.isNaN(parsed.getTime())) return null;
+  const parsed = getLocalDate(source);
+  if (!parsed) return null;
   return new Date(parsed.getFullYear(), parsed.getMonth(), 1);
 }
 
