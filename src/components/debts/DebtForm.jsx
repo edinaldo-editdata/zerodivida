@@ -47,26 +47,20 @@ const normalizeDate = (value) => {
   // Se já estiver no formato ISO (YYYY-MM-DD), retorna como está
   if (ISO_DATE_ONLY.test(value)) return value;
   
-  // Se for string com timezone (ex: 2025-05-20T00:00:00.000Z), extrai apenas a data
+  // Se for string com datetime (ex: 2025-05-20T00:00:00.000Z), extrai apenas a data
   if (typeof value === "string") {
     const datePart = value.split("T")[0];
     if (ISO_DATE_ONLY.test(datePart)) return datePart;
   }
   
-  // Se for timestamp ou outro formato, converte preservando o timezone local
-  const parsed = new Date(value);
-  if (Number.isNaN(parsed.getTime())) return "";
+  // Se for objeto Date ou timestamp, converte para YYYY-MM-DD no timezone local
+  const date = new Date(value);
+  if (isNaN(date.getTime())) return "";
   
-  // Usa Intl.DateTimeFormat para extrair a data no timezone local corretamente
-  const formatter = new Intl.DateTimeFormat("pt-BR", {
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  });
-  const parts = formatter.formatToParts(parsed);
-  const day = parts.find(p => p.type === "day")?.value || "01";
-  const month = parts.find(p => p.type === "month")?.value || "01";
-  const year = parts.find(p => p.type === "year")?.value || "1970";
+  // Extrai ano, mês e dia usando métodos locais (não UTC)
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
   
   return `${year}-${month}-${day}`;
 };
@@ -90,7 +84,7 @@ export default function DebtForm({ open, onClose, onSave, editDebt, creditCards 
     paid_amount: String(editDebt.paid_amount || "0"),
     paid_installments: String(editDebt.paid_installments || "0"),
     credit_card_id: editDebt.credit_card_id || "",
-    start_date: normalizeDate(editDebt.start_date || ""),
+    start_date: editDebt.start_date ? normalizeDate(editDebt.start_date) : normalizeDate(new Date().toISOString().split("T")[0]),
     recurrence: editDebt.recurrence || "none",
     recurrence_count: String(editDebt.recurrence_count || ""),
   } : defaultForm);

@@ -88,8 +88,12 @@ function createEntityCRUD(entityName) {
      */
     async create(data) {
       const now = new Date().toISOString();
+      // Preserva strings de data no formato YYYY-MM-DD como strings puras
       const docData = {
         ...data,
+        start_date: typeof data.start_date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(data.start_date) 
+          ? data.start_date 
+          : data.start_date,
         created_date: now,
         updated_date: now,
       };
@@ -102,8 +106,12 @@ function createEntityCRUD(entityName) {
      */
     async update(id, data) {
       const docRef = doc(db, entityName, id);
+      // Preserva strings de data no formato YYYY-MM-DD como strings puras
       const updateData = {
         ...data,
+        start_date: typeof data.start_date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(data.start_date) 
+          ? data.start_date 
+          : data.start_date,
         updated_date: new Date().toISOString(),
       };
       delete updateData.id;
