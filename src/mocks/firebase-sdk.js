@@ -88,12 +88,21 @@ function createEntityCRUD(entityName) {
      */
     async create(data) {
       const now = new Date().toISOString();
-      // Preserva strings de data no formato YYYY-MM-DD como strings puras
+      
+      // Converte data YYYY-MM-DD para timestamp ao meio-dia UTC (evita problemas de timezone)
+      const normalizeDateForStorage = (dateStr) => {
+        if (typeof dateStr === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+          // Cria data ao meio-dia UTC para evitar que timezone local mude o dia
+          // Ao usar 12:00:00 UTC, mesmo em UTC-3 ainda será o mesmo dia local
+          const [year, month, day] = dateStr.split('-').map(Number);
+          return new Date(Date.UTC(year, month - 1, day, 12, 0, 0));
+        }
+        return dateStr;
+      };
+      
       const docData = {
         ...data,
-        start_date: typeof data.start_date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(data.start_date) 
-          ? data.start_date 
-          : data.start_date,
+        start_date: normalizeDateForStorage(data.start_date),
         created_date: now,
         updated_date: now,
       };
@@ -106,12 +115,19 @@ function createEntityCRUD(entityName) {
      */
     async update(id, data) {
       const docRef = doc(db, entityName, id);
-      // Preserva strings de data no formato YYYY-MM-DD como strings puras
+      
+      // Converte data YYYY-MM-DD para timestamp ao meio-dia UTC
+      const normalizeDateForStorage = (dateStr) => {
+        if (typeof dateStr === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+          const [year, month, day] = dateStr.split('-').map(Number);
+          return new Date(Date.UTC(year, month - 1, day, 12, 0, 0));
+        }
+        return dateStr;
+      };
+      
       const updateData = {
         ...data,
-        start_date: typeof data.start_date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(data.start_date) 
-          ? data.start_date 
-          : data.start_date,
+        start_date: normalizeDateForStorage(data.start_date),
         updated_date: new Date().toISOString(),
       };
       delete updateData.id;

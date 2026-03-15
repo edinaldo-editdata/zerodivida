@@ -53,11 +53,23 @@ const normalizeDate = (value) => {
     if (ISO_DATE_ONLY.test(datePart)) return datePart;
   }
   
-  // Se for objeto Date ou timestamp, converte para YYYY-MM-DD no timezone local
+  // Se for Timestamp do Firestore, converte para YYYY-MM-DD
+  if (value?.toDate) {
+    try {
+      const ts = value.toDate();
+      const year = ts.getFullYear();
+      const month = String(ts.getMonth() + 1).padStart(2, "0");
+      const day = String(ts.getDate()).padStart(2, "0");
+      return `${year}-${month}-${day}`;
+    } catch {
+      return "";
+    }
+  }
+  
+  // Se for Date ou string, usa métodos locais
   const date = new Date(value);
   if (isNaN(date.getTime())) return "";
   
-  // Extrai ano, mês e dia usando métodos locais (não UTC)
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, "0");
   const day = String(date.getDate()).padStart(2, "0");
