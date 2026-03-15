@@ -195,6 +195,8 @@ export default function Debts() {
             start_date: `${year}-${month}-${day}`,
             recurrence: null, // Dívidas individuais não são recorrentes
             recurrence_count: null,
+            installment_number: i + 1, // Número da parcela atual
+            total_installments: recurrenceCount, // Total de parcelas da recorrência
             description: data.description ? `${data.description} (${i + 1}/${recurrenceCount})` : `Parcela ${i + 1}/${recurrenceCount}`,
           };
           

@@ -42,6 +42,17 @@ function formatMonthLabel(dateString) {
 function getInstallmentInfo(debt) {
   if (!debt.start_date) return null;
   
+  // Se tiver installment_number, usa diretamente (dívidas recorrentes)
+  if (debt.installment_number && debt.total_installments) {
+    return {
+      type: "parcela",
+      current: debt.installment_number,
+      total: debt.total_installments,
+      month: formatMonthLabel(debt.start_date),
+      isRecurring: true,
+    };
+  }
+  
   const startDate = new Date(debt.start_date + "T00:00:00");
   const today = new Date();
   today.setHours(0, 0, 0, 0);
