@@ -31,6 +31,43 @@ function formatCurrency(value) {
   return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value || 0);
 }
 
+function formatMonthLabel(dateString) {
+  if (!dateString) return "";
+  const date = new Date(dateString + "T00:00:00");
+  const monthName = date.toLocaleDateString("pt-BR", { month: "short" });
+  const year = date.getFullYear();
+  return `${monthName.charAt(0).toUpperCase() + monthName.slice(1)}/${year}`;
+}
+
+function getInstallmentInfo(debt) {
+  if (!debt.start_date) return null;
+  
+  const startDate = new Date(debt.start_date + "T00:00:00");
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  startDate.setHours(0, 0, 0, 0);
+  
+  // Calcula meses decorridos desde o início
+  const monthsDiff = (today.getFullYear() - startDate.getFullYear()) * 12 + 
+                     (today.getMonth() - startDate.getMonth());
+  
+  if (debt.total_installments && debt.total_installments > 1) {
+    // É um parcelamento
+    const currentInstallment = Math.min(monthsDiff + 1, debt.total_installments);
+    return {
+      type: "parcela",
+      current: currentInstallment,
+      total: debt.total_installments,
+      month: formatMonthLabel(debt.start_date),
+    };
+  }
+  
+  return {
+    type: "referencia",
+    month: formatMonthLabel(debt.start_date),
+  };
+}
+
 export default function DebtCard({ debt, index, onClick, creditCard }) {
   const cat = CATEGORY_CONFIG[debt.category] || CATEGORY_CONFIG.outro;
   const status = STATUS_CONFIG[debt.status] || STATUS_CONFIG.em_dia;
@@ -39,6 +76,7 @@ export default function DebtCard({ debt, index, onClick, creditCard }) {
   const progress = debt.total_amount > 0 ? Math.min(((debt.paid_amount || 0) / debt.total_amount) * 100, 100) : 0;
   const remaining = (debt.total_amount || 0) - (debt.paid_amount || 0);
   const isRecurring = debt.recurrence && debt.recurrence !== "none";
+  const installmentInfo = getInstallmentInfo(debt);
 
   const recurrenceLabels = {
     daily: "Diária",
@@ -69,7 +107,17 @@ export default function DebtCard({ debt, index, onClick, creditCard }) {
               <h3 className="text-sm font-semibold text-white group-hover:text-emerald-300 transition-colors">{debt.creditor}</h3>
               <div className={`w-1.5 h-1.5 rounded-full ${priority.dot}`} />
             </div>
-            <p className="text-xs text-slate-500">{cat.label}{debt.due_day ? ` • Dia ${debt.due_day}` : ""}</p>
+            <div className="flex items-center gap-2 flex-wrap">
+              <p className="text-xs text-slate-500">{cat.label}{debt.due_day ? ` • Dia ${debt.due_day}` : ""}</p>
+              {installmentInfo && (
+                <span className="text-[10px] px-1.5 py-0.5 rounded bg-white/[0.04] text-slate-400">
+                  {installmentInfo.type === "parcela" 
+                    ? `${installmentInfo.current}/${installmentInfo.total} • ${installmentInfo.month}`
+                    : installmentInfo.month
+                  }
+                </span>
+              )}
+            </div>
           </div>
         </div>
         <div className="flex items-center gap-2">
