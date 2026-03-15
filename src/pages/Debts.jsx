@@ -613,7 +613,7 @@ export default function Debts() {
 
           {selectedMonthDate && (
             monthSummaryCards.length > 0 && monthSummary.totalCount > 0 ? (
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mt-4">
                 {monthSummaryCards.map(card => {
                   if (card.key === "total") {
                     return (
