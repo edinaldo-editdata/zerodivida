@@ -146,8 +146,70 @@ export default function Debts() {
   });
 
   const createDebt = useMutation({
-    mutationFn: (data) => base44.entities.Debt.create(data),
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["debts"] }); setShowForm(false); },
+    mutationFn: async (data) => {
+      // Se for recorrente, cria múltiplas dívidas
+      if (data.recurrence && data.recurrence !== "none") {
+        const recurrenceCount = data.recurrence_count || 12; // Default 12 se não especificado
+        const createdDebts = [];
+        
+        // Mapeamento de meses para cada tipo de recorrência
+        const recurrenceMonths = {
+          daily: 0,      // Dias (tratado separadamente)
+          weekly: 0,     // Semanas (tratado separadamente)
+          biweekly: 0,   // Quinzenas (tratado separadamente)
+          monthly: 1,
+          bimonthly: 2,
+          quarterly: 3,
+          semiannual: 6,
+          annual: 12,
+        };
+        
+        const baseDate = data.start_date ? new Date(data.start_date) : new Date();
+        const monthsToAdd = recurrenceMonths[data.recurrence] || 1;
+        
+        for (let i = 0; i < recurrenceCount; i++) {
+          let occurrenceDate;
+          
+          if (data.recurrence === "daily") {
+            occurrenceDate = new Date(baseDate);
+            occurrenceDate.setDate(occurrenceDate.getDate() + i);
+          } else if (data.recurrence === "weekly") {
+            occurrenceDate = new Date(baseDate);
+            occurrenceDate.setDate(occurrenceDate.getDate() + (i * 7));
+          } else if (data.recurrence === "biweekly") {
+            occurrenceDate = new Date(baseDate);
+            occurrenceDate.setDate(occurrenceDate.getDate() + (i * 14));
+          } else {
+            occurrenceDate = new Date(baseDate);
+            occurrenceDate.setMonth(occurrenceDate.getMonth() + (i * monthsToAdd));
+          }
+          
+          const year = occurrenceDate.getFullYear();
+          const month = String(occurrenceDate.getMonth() + 1).padStart(2, "0");
+          const day = String(occurrenceDate.getDate()).padStart(2, "0");
+          
+          const debtData = {
+            ...data,
+            start_date: `${year}-${month}-${day}`,
+            recurrence: null, // Dívidas individuais não são recorrentes
+            recurrence_count: null,
+            description: data.description ? `${data.description} (${i + 1}/${recurrenceCount})` : `Parcela ${i + 1}/${recurrenceCount}`,
+          };
+          
+          const created = await base44.entities.Debt.create(debtData);
+          createdDebts.push(created);
+        }
+        
+        return createdDebts;
+      }
+      
+      // Não recorrente: cria apenas uma dívida
+      return [await base44.entities.Debt.create(data)];
+    },
+    onSuccess: () => { 
+      queryClient.invalidateQueries({ queryKey: ["debts"] }); 
+      setShowForm(false); 
+    },
   });
 
   const updateDebt = useMutation({
