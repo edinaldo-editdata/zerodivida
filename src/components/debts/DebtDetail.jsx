@@ -127,7 +127,7 @@ export default function DebtDetail({
             {debt.start_date && (
               <div>
                 <p className="text-xs text-slate-500">Início</p>
-                <p className="text-white">{format(new Date(debt.start_date), "dd/MM/yyyy")}</p>
+                <p className="text-white">{format(getLocalDate(debt.start_date) || new Date(), "dd/MM/yyyy")}</p>
               </div>
             )}
           </div>
