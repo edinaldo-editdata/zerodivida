@@ -423,6 +423,7 @@ export default function Debts() {
         border: "border-amber-500/20",
         bg: "bg-amber-500/5",
         accent: "text-amber-400",
+        bar: "bg-gradient-to-r from-amber-400/80 via-amber-200/70 to-amber-400/80",
       },
       {
         key: "pago",
@@ -433,6 +434,7 @@ export default function Debts() {
         border: "border-emerald-500/20",
         bg: "bg-emerald-500/5",
         accent: "text-emerald-400",
+        bar: "bg-gradient-to-r from-emerald-400/80 via-emerald-200/70 to-emerald-400/80",
       },
       {
         key: "atrasada",
@@ -443,6 +445,7 @@ export default function Debts() {
         border: "border-red-500/20",
         bg: "bg-red-500/5",
         accent: "text-red-400",
+        bar: "bg-gradient-to-r from-rose-500/80 via-rose-300/70 to-rose-500/80",
       },
     ];
   }, [monthSummary, selectedMonthDate]);
@@ -603,18 +606,28 @@ export default function Debts() {
                 {monthSummaryCards.map(card => {
                   const isActive = statusFilter === card.key;
                   return (
-                    <button
+                    <motion.button
                       type="button"
                       key={card.key}
                       onClick={() => setStatusFilter(prev => prev === card.key ? "all" : card.key)}
                       aria-pressed={isActive}
-                      className={`rounded-2xl border p-4 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/20 ${card.border} ${card.bg} ${isActive ? "border-white/40 bg-white/10 shadow-lg" : "hover:border-white/20"}`}
+                      initial={{ opacity: 0.85, y: 6 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                      transition={{ type: "spring", stiffness: 260, damping: 20 }}
+                      className={`relative overflow-hidden rounded-2xl border p-4 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/20 ${card.border} ${card.bg} ${isActive ? "border-white/40 bg-white/10 shadow-lg" : "hover:border-white/20"}`}
                     >
+                      <motion.div
+                        className={`h-1 w-full mb-3 rounded-full ${card.bar}`}
+                        animate={{ opacity: [0.3, 0.95, 0.3] }}
+                        transition={{ duration: 2.4, repeat: Infinity, repeatType: "mirror" }}
+                      />
                       <p className={`text-xs uppercase tracking-wider ${card.accent}`}>{card.title}</p>
                       <p className="text-xl font-bold text-white mt-1">{formatCurrency(card.amount)}</p>
                       <p className="text-[11px] text-slate-300">{card.count} {card.count === 1 ? "registro" : "registros"}</p>
                       <p className="text-[10px] text-slate-500 mt-1">{card.helper}{isActive ? " • filtro ativo" : " • clique para filtrar"}</p>
-                    </button>
+                    </motion.button>
                   );
                 })}
               </div>
