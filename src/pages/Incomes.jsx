@@ -252,6 +252,11 @@ export default function Incomes() {
       .reduce((sum, income) => sum + (income.amount || 0), 0);
   }, [incomes]);
 
+  const handleClearFilters = () => {
+    setSearch("");
+    setCategoryFilter("all");
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center p-20">
@@ -333,6 +338,10 @@ export default function Incomes() {
               )}
             </SelectContent>
           </Select>
+          <Button type="button" variant="outline" onClick={handleClearFilters}
+            className="w-full sm:w-auto border-white/15 text-slate-200 hover:text-white">
+            Limpar filtros
+          </Button>
         </div>
 
         {/* List */}

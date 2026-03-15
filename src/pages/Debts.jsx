@@ -303,6 +303,15 @@ export default function Debts() {
     }
   }, [yearFilter, monthFilter]);
 
+  const handleClearFilters = () => {
+    setSearch("");
+    setStatusFilter("all");
+    setCategoryFilter("all");
+    setCardFilter("all");
+    setMonthFilter("all");
+    setYearFilter("all");
+  };
+
   const currentPeriodLabel = useMemo(() => {
     if (monthFilter === "all") {
       return yearFilter === "all" ? "Todos os meses" : `Ano ${yearFilter}`;
@@ -672,6 +681,10 @@ export default function Debts() {
               ))}
             </SelectContent>
           </Select>
+          <Button type="button" variant="outline" onClick={handleClearFilters}
+            className="w-full sm:w-auto border-white/15 text-slate-200 hover:text-white">
+            Limpar filtros
+          </Button>
         </motion.div>
 
         {/* Grid */}
