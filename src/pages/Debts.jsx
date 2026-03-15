@@ -619,14 +619,20 @@ export default function Debts() {
                       className={`relative overflow-hidden rounded-2xl border p-4 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/20 ${card.border} ${card.bg} ${isActive ? "border-white/40 bg-white/10 shadow-lg" : "hover:border-white/20"}`}
                     >
                       <motion.div
-                        className={`h-1 w-full mb-3 rounded-full ${card.bar}`}
-                        animate={{ opacity: [0.3, 0.95, 0.3] }}
-                        transition={{ duration: 2.4, repeat: Infinity, repeatType: "mirror" }}
+                        className="absolute inset-0 pointer-events-none"
+                        style={{ background: "linear-gradient(120deg, transparent 20%, rgba(255,255,255,0.08), transparent 80%)" }}
+                        animate={{ backgroundPosition: ["-200% 0%", "200% 0%"] }}
+                        transition={{ duration: 4, repeat: Infinity, ease: "linear" }}
                       />
-                      <p className={`text-xs uppercase tracking-wider ${card.accent}`}>{card.title}</p>
-                      <p className="text-xl font-bold text-white mt-1">{formatCurrency(card.amount)}</p>
-                      <p className="text-[11px] text-slate-300">{card.count} {card.count === 1 ? "registro" : "registros"}</p>
-                      <p className="text-[10px] text-slate-500 mt-1">{card.helper}{isActive ? " • filtro ativo" : " • clique para filtrar"}</p>
+                      <motion.div
+                        className={`relative h-1 w-full mb-3 rounded-full ${card.bar}`}
+                        animate={{ opacity: [0.35, 0.9, 0.35], scaleX: [0.75, 1, 0.75] }}
+                        transition={{ duration: 2, repeat: Infinity, repeatType: "mirror" }}
+                      />
+                      <p className={`relative text-xs uppercase tracking-wider ${card.accent}`}>{card.title}</p>
+                      <p className="relative text-xl font-bold text-white mt-1">{formatCurrency(card.amount)}</p>
+                      <p className="relative text-[11px] text-slate-300">{card.count} {card.count === 1 ? "registro" : "registros"}</p>
+                      <p className="relative text-[10px] text-slate-500 mt-1">{card.helper}{isActive ? " • filtro ativo" : " • clique para filtrar"}</p>
                     </motion.button>
                   );
                 })}
