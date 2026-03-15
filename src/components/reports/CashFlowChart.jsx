@@ -1,5 +1,5 @@
 import React from "react";
-import { BarChart, Bar, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
+import { ComposedChart, Bar, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
 
 function formatCurrency(value) {
   return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", minimumFractionDigits: 0 }).format(value || 0);
@@ -33,7 +33,7 @@ export default function CashFlowChart({ data, balanceKey = "cumulative", balance
       <p className="text-xs text-slate-600 mb-5">Entradas vs. saídas mensais</p>
       <div className="h-64">
         <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={data} margin={{ top: 5, right: 5, left: -15, bottom: 5 }} barGap={4}>
+          <ComposedChart data={data} margin={{ top: 5, right: 5, left: -15, bottom: 5 }} barGap={4}>
             <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
             <XAxis dataKey="month" stroke="#64748b" fontSize={11} tickLine={false} />
             <YAxis stroke="#64748b" fontSize={11} tickLine={false}
@@ -56,7 +56,7 @@ export default function CashFlowChart({ data, balanceKey = "cumulative", balance
                 activeDot={{ r: 5 }}
               />
             )}
-          </BarChart>
+            </ComposedChart>
         </ResponsiveContainer>
       </div>
     </div>
