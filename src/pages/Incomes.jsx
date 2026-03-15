@@ -39,6 +39,26 @@ function formatMonth(date) {
   return format(date, "MMM yyyy", { locale: ptBR }).replace(".", "");
 }
 
+function getLocalDate(value) {
+  if (!value) return null;
+  if (typeof value === "string") {
+    if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+      const [year, month, day] = value.split("-").map(Number);
+      if (Number.isFinite(year) && Number.isFinite(month) && Number.isFinite(day)) {
+        return new Date(year, month - 1, day);
+      }
+    }
+    const parsed = new Date(value.includes("T") ? value : `${value}T00:00:00`);
+    if (!Number.isNaN(parsed.getTime())) {
+      return new Date(parsed.getFullYear(), parsed.getMonth(), parsed.getDate());
+    }
+    return null;
+  }
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return null;
+  return new Date(parsed.getFullYear(), parsed.getMonth(), parsed.getDate());
+}
+
 export default function Incomes() {
   const FILTER_STORAGE_KEY = "incomes_filters";
 
@@ -75,7 +95,8 @@ export default function Incomes() {
   }, []);
 
   const createRecurringInstances = async (incomeData) => {
-    const normalizedDay = incomeData.recurrent_day || new Date(incomeData.date).getDate();
+    const baseDate = getLocalDate(incomeData.date) || new Date();
+    const normalizedDay = incomeData.recurrent_day || baseDate.getDate();
     const { records } = buildRecurringRecords({
       ...incomeData,
       recurrent: true,
@@ -119,7 +140,8 @@ export default function Incomes() {
     const currentOffset = income.recurrence_offset || 0;
     const totalMonths = income.recurrence_months || DEFAULT_RECURRENCE_MONTHS;
     const monthsRemaining = Math.max(totalMonths - currentOffset, 1);
-    const normalizedDay = payload.recurrent_day || new Date(payload.date).getDate();
+    const baseDate = getLocalDate(payload.date) || new Date();
+    const normalizedDay = payload.recurrent_day || baseDate.getDate();
 
     const { records } = buildRecurringRecords({
       ...payload,
@@ -247,8 +269,8 @@ export default function Incomes() {
 
   const periodFiltered = useMemo(() => incomes.filter(i => {
     if (yearFilter === "all" && monthFilter === "all") return true;
-    const d = new Date(i.date);
-    if (Number.isNaN(d.getTime())) return false;
+    const d = getLocalDate(i.date);
+    if (!d) return false;
     if (yearFilter !== "all" && String(d.getFullYear()) !== yearFilter) return false;
     if (monthFilter !== "all" && getMonthKey(d) !== monthFilter) return false;
     return true;
@@ -272,9 +294,8 @@ export default function Incomes() {
   const yearOptions = useMemo(() => {
     const years = new Set();
     incomes.forEach(income => {
-      if (!income?.date) return;
-      const d = new Date(income.date);
-      if (!Number.isNaN(d.getTime())) {
+      const d = getLocalDate(income?.date);
+      if (d) {
         years.add(String(d.getFullYear()));
       }
     });
@@ -284,9 +305,8 @@ export default function Incomes() {
   const allMonthOptions = useMemo(() => {
     const map = new Map();
     incomes.forEach(income => {
-      if (!income?.date) return;
-      const d = new Date(income.date);
-      if (Number.isNaN(d.getTime())) return;
+      const d = getLocalDate(income?.date);
+      if (!d) return;
       const key = getMonthKey(d);
       if (!map.has(key)) {
         map.set(key, { value: key, label: formatMonth(new Date(d.getFullYear(), d.getMonth(), 1)), year: String(d.getFullYear()) });
@@ -313,7 +333,8 @@ export default function Incomes() {
     const now = new Date();
     return incomes
       .filter(i => {
-        const d = new Date(i.date);
+        const d = getLocalDate(i.date);
+        if (!d) return false;
         return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
       })
       .reduce((s, i) => s + (i.amount || 0), 0);
@@ -325,7 +346,11 @@ export default function Incomes() {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     return incomes
-      .filter(i => i.recurrence_id && new Date(i.date) >= today)
+      .filter(i => {
+        if (!i.recurrence_id) return false;
+        const d = getLocalDate(i.date);
+        return d && d >= today;
+      })
       .reduce((sum, income) => sum + (income.amount || 0), 0);
   }, [incomes]);
 
@@ -503,7 +528,10 @@ export default function Incomes() {
                         <div className="flex flex-wrap items-center gap-2 mt-0.5">
                           <Badge variant="secondary" className={`text-[10px] border ${cat.color}`}>{cat.label}</Badge>
                           <span className="text-xs text-slate-500">
-                            {format(new Date(income.date), "dd MMM yyyy", { locale: ptBR })}
+                            {(() => {
+                              const date = getLocalDate(income.date);
+                              return date ? format(date, "dd MMM yyyy", { locale: ptBR }) : "--";
+                            })()}
                           </span>
                           {income.recurrence_id && (
                             <span className="text-[10px] text-slate-500">Série #{income.recurrence_id.slice(-4)}</span>
