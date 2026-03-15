@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "./utils";
-import { LayoutDashboard, List, TrendingUp, BarChart2, Menu, X, Wifi, User, Clock } from "lucide-react";
+import { LayoutDashboard, List, TrendingUp, BarChart2, Menu, X, Wifi, User, Clock, Calculator as CalculatorIcon } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "./lib/AuthContext";
+import Calculator from "@/components/Calculator";
 
 const NAV_ITEMS = [
   { name: "Dashboard", icon: LayoutDashboard, page: "Dashboard" },
@@ -14,6 +15,7 @@ const NAV_ITEMS = [
 
 export default function Layout({ children, currentPageName }) {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [calculatorOpen, setCalculatorOpen] = useState(false);
   const { user } = useAuth();
   const [lastUpdate, setLastUpdate] = useState(new Date());
 
@@ -58,13 +60,22 @@ export default function Layout({ children, currentPageName }) {
               </div>
             </div>
 
-            {/* Mobile toggle */}
-            <button
-              onClick={() => setMobileOpen(!mobileOpen)}
-              className="sm:hidden text-slate-400 hover:text-white p-1"
-            >
-              {mobileOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-            </button>
+            {/* Calculator button + Mobile toggle */}
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setCalculatorOpen(true)}
+                className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm bg-white/[0.06] hover:bg-white/[0.1] text-slate-300 hover:text-white transition-all"
+              >
+                <CalculatorIcon className="w-4 h-4" />
+                <span className="hidden lg:inline">Calculadora</span>
+              </button>
+              <button
+                onClick={() => setMobileOpen(!mobileOpen)}
+                className="sm:hidden text-slate-400 hover:text-white p-1"
+              >
+                {mobileOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+              </button>
+            </div>
           </div>
         </div>
 
@@ -97,6 +108,13 @@ export default function Layout({ children, currentPageName }) {
                     </Link>
                   );
                 })}
+                <button
+                  onClick={() => { setCalculatorOpen(true); setMobileOpen(false); }}
+                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-slate-400 hover:text-white hover:bg-white/[0.04] transition-all"
+                >
+                  <CalculatorIcon className="w-4 h-4" />
+                  Calculadora
+                </button>
               </div>
             </motion.div>
           )}
@@ -144,6 +162,11 @@ export default function Layout({ children, currentPageName }) {
           </div>
         </div>
       </footer>
+
+      {/* Calculator Modal */}
+      <AnimatePresence>
+        {calculatorOpen && <Calculator onClose={() => setCalculatorOpen(false)} />}
+      </AnimatePresence>
     </div>
   );
 }
