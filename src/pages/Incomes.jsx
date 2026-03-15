@@ -40,6 +40,8 @@ function formatMonth(date) {
 }
 
 export default function Incomes() {
+  const FILTER_STORAGE_KEY = "incomes_filters";
+
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [yearFilter, setYearFilter] = useState("all");
@@ -55,6 +57,22 @@ export default function Incomes() {
     queryKey: ["incomes"],
     queryFn: () => base44.entities.Income.list("-date"),
   });
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      const stored = localStorage.getItem(FILTER_STORAGE_KEY);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (parsed.search) setSearch(parsed.search);
+        if (parsed.categoryFilter) setCategoryFilter(parsed.categoryFilter);
+        if (parsed.yearFilter) setYearFilter(parsed.yearFilter);
+        if (parsed.monthFilter) setMonthFilter(parsed.monthFilter);
+      }
+    } catch (error) {
+      console.error("Erro ao carregar filtros de entradas", error);
+    }
+  }, []);
 
   const createRecurringInstances = async (incomeData) => {
     const normalizedDay = incomeData.recurrent_day || new Date(incomeData.date).getDate();
@@ -310,6 +328,21 @@ export default function Incomes() {
       .filter(i => i.recurrence_id && new Date(i.date) >= today)
       .reduce((sum, income) => sum + (income.amount || 0), 0);
   }, [incomes]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const payload = {
+      search,
+      categoryFilter,
+      yearFilter,
+      monthFilter,
+    };
+    try {
+      localStorage.setItem(FILTER_STORAGE_KEY, JSON.stringify(payload));
+    } catch (error) {
+      console.error("Erro ao salvar filtros de entradas", error);
+    }
+  }, [search, categoryFilter, yearFilter, monthFilter]);
 
   const handleClearFilters = () => {
     setSearch("");
