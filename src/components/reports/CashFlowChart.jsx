@@ -1,5 +1,5 @@
 import React from "react";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
+import { BarChart, Bar, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
 
 function formatCurrency(value) {
   return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", minimumFractionDigits: 0 }).format(value || 0);
@@ -17,16 +17,16 @@ const CustomTooltip = ({ active, payload, label }) => {
           <span className="font-medium text-white">{formatCurrency(p.value)}</span>
         </div>
       ))}
-      {payload.length === 2 && (
+      {payload.length >= 2 && (
         <div className={`mt-2 pt-2 border-t border-white/10 font-semibold ${payload[0].value - payload[1].value >= 0 ? "text-emerald-400" : "text-red-400"}`}>
-          Saldo: {formatCurrency(payload[0].value - payload[1].value)}
+          Saldo mensal: {formatCurrency(payload[0].value - payload[1].value)}
         </div>
       )}
     </div>
   );
 };
 
-export default function CashFlowChart({ data }) {
+export default function CashFlowChart({ data, balanceKey = "cumulative", balanceLabel = "Saldo acumulado" }) {
   return (
     <div className="rounded-2xl bg-white/[0.03] border border-white/[0.06] p-6">
       <h3 className="text-sm font-medium text-slate-400 uppercase tracking-wider mb-1">Fluxo de Caixa</h3>
@@ -45,6 +45,17 @@ export default function CashFlowChart({ data }) {
             />
             <Bar dataKey="income" name="Entradas" fill="#10B981" radius={[4, 4, 0, 0]} maxBarSize={36} />
             <Bar dataKey="expenses" name="Saídas" fill="#F43F5E" radius={[4, 4, 0, 0]} maxBarSize={36} />
+            {balanceKey && (
+              <Line
+                type="monotone"
+                dataKey={balanceKey}
+                name={balanceLabel}
+                stroke="#38BDF8"
+                strokeWidth={2}
+                dot={{ fill: "#38BDF8", strokeWidth: 0 }}
+                activeDot={{ r: 5 }}
+              />
+            )}
           </BarChart>
         </ResponsiveContainer>
       </div>

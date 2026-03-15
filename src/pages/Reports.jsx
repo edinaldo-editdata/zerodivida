@@ -10,7 +10,6 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 
 import ReportSummaryCards from "@/components/reports/ReportSummaryCards";
 import CashFlowChart from "@/components/reports/CashFlowChart";
-import BalanceChart from "@/components/reports/BalanceChart";
 import CategoryBreakdown from "@/components/reports/CategoryBreakdown";
 import DebtPaymentTimeline from "@/components/reports/DebtPaymentTimeline";
 import MonthlyDebtChart from "@/components/dashboard/MonthlyDebtChart";
@@ -262,6 +261,11 @@ export default function Reports() {
     });
   }, [monthlyData, currentInitialBalance]);
 
+  const cashFlowChartData = useMemo(() => monthlyData.map((d, index) => ({
+    ...d,
+    cumulative: accumulatedData[index]?.balance ?? currentInitialBalance,
+  })), [monthlyData, accumulatedData, currentInitialBalance]);
+
   // Summary for selected period
   const periodIncome = monthlyData.reduce((s, d) => s + d.income, 0);
   const periodExpenses = monthlyData.reduce((s, d) => s + d.expenses, 0);
@@ -371,11 +375,8 @@ export default function Reports() {
           savingsRate={savingsRate}
         />
 
-        {/* Cash flow */}
-        <CashFlowChart data={monthlyData} />
-
-        {/* Balance evolution */}
-        <BalanceChart data={accumulatedData} initialBalance={currentInitialBalance} />
+        {/* Cash flow + saldo */}
+        <CashFlowChart data={cashFlowChartData} balanceKey="cumulative" balanceLabel="Saldo acumulado" />
 
         {/* Categories */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
