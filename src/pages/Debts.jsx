@@ -587,7 +587,7 @@ export default function Debts() {
               </div>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
               {creditCards.map(card => (
                 <CreditCardCard
                   key={card.id}
@@ -781,7 +781,7 @@ export default function Debts() {
             <p className="text-slate-600 text-xs mt-1">{selectedMonthDate || cardFilter !== "all" ? "Ajuste o filtro de mês/cartão ou registre novos pagamentos" : "Tente ajustar os filtros ou adicione uma nova dívida"}</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
             <AnimatePresence>
               {filteredDebts.map((debt, i) => (
                 <DebtCard
