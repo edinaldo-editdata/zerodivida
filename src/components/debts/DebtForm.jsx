@@ -43,13 +43,32 @@ const ISO_DATE_ONLY = /^\d{4}-\d{2}-\d{2}$/;
 
 const normalizeDate = (value) => {
   if (!value) return "";
+  
+  // Se já estiver no formato ISO (YYYY-MM-DD), retorna como está
   if (ISO_DATE_ONLY.test(value)) return value;
+  
+  // Se for string com timezone (ex: 2025-05-20T00:00:00.000Z), extrai apenas a data
+  if (typeof value === "string") {
+    const datePart = value.split("T")[0];
+    if (ISO_DATE_ONLY.test(datePart)) return datePart;
+  }
+  
+  // Se for timestamp ou outro formato, converte preservando o timezone local
   const parsed = new Date(value);
   if (Number.isNaN(parsed.getTime())) return "";
-  const local = new Date(parsed.getFullYear(), parsed.getMonth(), parsed.getDate());
-  const month = String(local.getMonth() + 1).padStart(2, "0");
-  const day = String(local.getDate()).padStart(2, "0");
-  return `${local.getFullYear()}-${month}-${day}`;
+  
+  // Usa Intl.DateTimeFormat para extrair a data no timezone local corretamente
+  const formatter = new Intl.DateTimeFormat("pt-BR", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  });
+  const parts = formatter.formatToParts(parsed);
+  const day = parts.find(p => p.type === "day")?.value || "01";
+  const month = parts.find(p => p.type === "month")?.value || "01";
+  const year = parts.find(p => p.type === "year")?.value || "1970";
+  
+  return `${year}-${month}-${day}`;
 };
 
 const defaultForm = {
