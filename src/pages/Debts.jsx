@@ -638,17 +638,6 @@ export default function Debts() {
                         transition={{ type: "spring", stiffness: 260, damping: 20 }}
                         className={`relative overflow-hidden rounded-2xl border p-4 text-left ${card.border} ${card.bg}`}
                       >
-                        <motion.div
-                          className="absolute inset-0 pointer-events-none"
-                          style={{ background: "linear-gradient(120deg, transparent 30%, rgba(255,255,255,0.06), transparent 70%)" }}
-                          animate={{ backgroundPosition: ["-200% 0%", "200% 0%"] }}
-                          transition={{ duration: 5, repeat: Infinity, ease: "linear" }}
-                        />
-                        <motion.div
-                          className={`relative h-1 w-full mb-3 rounded-full ${card.bar}`}
-                          animate={{ opacity: [0.5, 1, 0.5], scaleX: [0.7, 1, 0.7] }}
-                          transition={{ duration: 2.5, repeat: Infinity, repeatType: "mirror" }}
-                        />
                         <div className="relative flex items-center gap-2 text-xs uppercase tracking-wider">
                           <motion.span
                             className={`w-1.5 h-1.5 rounded-full ${card.indicator}`}
@@ -677,17 +666,6 @@ export default function Debts() {
                       transition={{ type: "spring", stiffness: 260, damping: 20 }}
                       className={`relative overflow-hidden rounded-2xl border p-4 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/20 ${card.border} ${card.bg} ${isActive ? "border-white/40 bg-white/10 shadow-lg" : "hover:border-white/20"}`}
                     >
-                      <motion.div
-                        className="absolute inset-0 pointer-events-none"
-                        style={{ background: "linear-gradient(120deg, transparent 20%, rgba(255,255,255,0.08), transparent 80%)" }}
-                        animate={{ backgroundPosition: ["-200% 0%", "200% 0%"] }}
-                        transition={{ duration: 4, repeat: Infinity, ease: "linear" }}
-                      />
-                      <motion.div
-                        className={`relative h-1 w-full mb-3 rounded-full ${card.bar}`}
-                        animate={{ opacity: [0.35, 0.9, 0.35], scaleX: [0.75, 1, 0.75] }}
-                        transition={{ duration: 2, repeat: Infinity, repeatType: "mirror" }}
-                      />
                       <div className="relative flex items-center gap-2 text-xs uppercase tracking-wider">
                         <motion.span
                           className={`w-1.5 h-1.5 rounded-full ${card.indicator}`}
