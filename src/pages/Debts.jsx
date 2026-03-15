@@ -126,13 +126,13 @@ export default function Debts() {
     deletePayment.mutate({ id: payment.id, payment });
   };
 
-  useFirebaseRealtime("Debt", ["debts"], "-created_date");
+  useFirebaseRealtime("Debt", ["debts"], "start_date");
   useFirebaseRealtime("Payment", ["payments"], "-payment_date");
   useFirebaseRealtime("CreditCard", ["creditCards"], "name");
 
   const { data: debts = [], isLoading } = useQuery({
     queryKey: ["debts"],
-    queryFn: () => base44.entities.Debt.list("-created_date"),
+    queryFn: () => base44.entities.Debt.list("start_date"),
   });
 
   const { data: payments = [] } = useQuery({
