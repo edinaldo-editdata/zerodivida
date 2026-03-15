@@ -1,7 +1,7 @@
 import React from "react";
 import { motion } from "framer-motion";
 import { Badge } from "@/components/ui/badge";
-import { CreditCard as CreditCardIcon, Landmark, Home, Zap, Heart, GraduationCap, User, MoreHorizontal, ChevronRight, RefreshCw } from "lucide-react";
+import { CreditCard as CreditCardIcon, Landmark, Home, Zap, Heart, GraduationCap, User, MoreHorizontal, ChevronRight, RefreshCw, Check } from "lucide-react";
 
 const CATEGORY_CONFIG = {
   cartao_credito: { icon: CreditCardIcon, label: "Cartão de Crédito", color: "text-blue-400", bg: "bg-blue-500/10" },
@@ -68,7 +68,7 @@ function getInstallmentInfo(debt) {
   };
 }
 
-export default function DebtCard({ debt, index, onClick, creditCard }) {
+export default function DebtCard({ debt, index, onClick, creditCard, isSelected, onSelect }) {
   const cat = CATEGORY_CONFIG[debt.category] || CATEGORY_CONFIG.outro;
   const status = STATUS_CONFIG[debt.status] || STATUS_CONFIG.em_dia;
   const priority = PRIORITY_CONFIG[debt.priority] || PRIORITY_CONFIG.media;
@@ -94,11 +94,23 @@ export default function DebtCard({ debt, index, onClick, creditCard }) {
       initial={{ opacity: 0, y: 15 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.04, duration: 0.35 }}
-      onClick={onClick}
-      className="rounded-2xl bg-white/[0.03] border border-white/[0.06] p-5 hover:bg-white/[0.06] hover:border-white/[0.1] cursor-pointer transition-all duration-300 group"
+      onClick={onSelect ? (e) => { e.stopPropagation(); onSelect(); } : onClick}
+      className={`rounded-2xl bg-white/[0.03] border ${isSelected ? "border-emerald-500/50 bg-emerald-500/[0.08]" : "border-white/[0.06]"} p-5 hover:bg-white/[0.06] hover:border-white/[0.1] cursor-pointer transition-all duration-300 group`}
     >
       <div className="flex items-start justify-between mb-4">
-        <div className="flex items-center gap-3">
+        <div className="flex items-start gap-3 flex-1">
+          {onSelect && (
+            <button
+              onClick={(e) => { e.stopPropagation(); onSelect(); }}
+              className={`mt-0.5 w-5 h-5 rounded border flex items-center justify-center transition-all ${
+                isSelected
+                  ? "bg-emerald-500 border-emerald-500 text-white"
+                  : "bg-white/[0.03] border-white/[0.2] text-transparent hover:border-white/[0.4]"
+              }`}
+            >
+              <Check className="w-3.5 h-3.5" />
+            </button>
+          )}
           <div className={`w-10 h-10 rounded-xl ${cat.bg} flex items-center justify-center`}>
             <Icon className={`w-5 h-5 ${cat.color}`} />
           </div>

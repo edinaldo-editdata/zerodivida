@@ -4,7 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Search, Loader2, Filter } from "lucide-react";
+import { Plus, Search, Loader2, Filter, Trash2, Check } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useFirebaseRealtime } from "@/hooks/useFirebaseRealtime";
 
@@ -107,6 +107,8 @@ export default function Debts() {
   const [editPayment, setEditPayment] = useState(null);
   const [showCardForm, setShowCardForm] = useState(false);
   const [editCard, setEditCard] = useState(null);
+  const [selectedDebts, setSelectedDebts] = useState([]);
+  const [isSelectMode, setIsSelectMode] = useState(false);
   const queryClient = useQueryClient();
 
   const openPaymentForm = (payment = null) => {
@@ -581,6 +583,47 @@ export default function Debts() {
     deleteCard.mutate(card.id);
   };
 
+  const toggleSelectMode = () => {
+    setIsSelectMode(!isSelectMode);
+    setSelectedDebts([]);
+  };
+
+  const toggleDebtSelection = (debtId) => {
+    setSelectedDebts(prev =>
+      prev.includes(debtId)
+        ? prev.filter(id => id !== debtId)
+        : [...prev, debtId]
+    );
+  };
+
+  const selectAllDebts = () => {
+    if (selectedDebts.length === filteredDebts.length) {
+      setSelectedDebts([]);
+    } else {
+      setSelectedDebts(filteredDebts.map(d => d.id));
+    }
+  };
+
+  const handleBulkDelete = () => {
+    if (selectedDebts.length === 0) return;
+    const confirmed = window.confirm(
+      `Tem certeza que deseja remover ${selectedDebts.length} dívida(s) selecionada(s)? Esta ação não pode ser desfeita.`
+    );
+    if (!confirmed) return;
+
+    // Deletar todas em paralelo
+    Promise.all(selectedDebts.map(id => base44.entities.Debt.delete(id)))
+      .then(() => {
+        queryClient.invalidateQueries({ queryKey: ["debts"] });
+        setSelectedDebts([]);
+        setIsSelectMode(false);
+      })
+      .catch(err => {
+        console.error("Erro ao deletar dívidas:", err);
+        alert("Erro ao remover algumas dívidas. Tente novamente.");
+      });
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center p-20">
@@ -831,7 +874,57 @@ export default function Debts() {
             className="w-full sm:w-auto border-white/15 text-slate-200 hover:text-white">
             Limpar filtros
           </Button>
+          <Button
+            type="button"
+            variant={isSelectMode ? "default" : "outline"}
+            onClick={toggleSelectMode}
+            className={`w-full sm:w-auto ${isSelectMode ? "bg-emerald-600 hover:bg-emerald-700 text-white" : "border-white/15 text-slate-200 hover:text-white"}`}
+          >
+            {isSelectMode ? "Cancelar seleção" : "Selecionar"}
+          </Button>
         </motion.div>
+
+        {/* Bulk Action Bar */}
+        {isSelectMode && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="rounded-xl bg-emerald-600/10 border border-emerald-500/30 p-3 mb-6 flex items-center justify-between"
+          >
+            <div className="flex items-center gap-3">
+              <button
+                onClick={selectAllDebts}
+                className="w-5 h-5 rounded border border-emerald-400 flex items-center justify-center bg-emerald-500/20 hover:bg-emerald-500/40 transition"
+              >
+                {selectedDebts.length === filteredDebts.length && filteredDebts.length > 0 && (
+                  <Check className="w-3.5 h-3.5 text-emerald-400" />
+                )}
+              </button>
+              <span className="text-sm text-emerald-300">
+                {selectedDebts.length} de {filteredDebts.length} dívidas selecionadas
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => { setSelectedDebts([]); setIsSelectMode(false); }}
+                className="border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/20"
+              >
+                Cancelar
+              </Button>
+              <Button
+                size="sm"
+                onClick={handleBulkDelete}
+                disabled={selectedDebts.length === 0}
+                className="bg-red-600 hover:bg-red-700 text-white disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <Trash2 className="w-4 h-4 mr-2" />
+                Excluir {selectedDebts.length > 0 && `(${selectedDebts.length})`}
+              </Button>
+            </div>
+          </motion.div>
+        )}
 
         {/* Grid */}
         {filteredDebts.length === 0 ? (
@@ -850,8 +943,10 @@ export default function Debts() {
                   key={debt.id}
                   debt={debt}
                   index={i}
-                  onClick={() => setSelectedDebt(debt)}
+                  onClick={() => !isSelectMode && setSelectedDebt(debt)}
                   creditCard={creditCardMap.get(debt.credit_card_id)}
+                  isSelected={selectedDebts.includes(debt.id)}
+                  onSelect={isSelectMode ? () => toggleDebtSelection(debt.id) : null}
                 />
               ))}
             </AnimatePresence>
