@@ -27,6 +27,18 @@ const PRIORITIES = [
   { value: "urgente", label: "Urgente" },
 ];
 
+const RECURRENCE_OPTIONS = [
+  { value: "none", label: "Não recorrente" },
+  { value: "daily", label: "Diária" },
+  { value: "weekly", label: "Semanal" },
+  { value: "biweekly", label: "Quinzenal" },
+  { value: "monthly", label: "Mensal" },
+  { value: "bimonthly", label: "Bimestral" },
+  { value: "quarterly", label: "Trimestral" },
+  { value: "semiannual", label: "Semestral" },
+  { value: "annual", label: "Anual" },
+];
+
 const ISO_DATE_ONLY = /^\d{4}-\d{2}-\d{2}$/;
 
 const normalizeDate = (value) => {
@@ -45,6 +57,7 @@ const defaultForm = {
   total_installments: "1", installment_amount: "", due_day: "",
   start_date: normalizeDate(new Date().toISOString().split("T")[0]), priority: "media", status: "em_dia", notes: "",
   paid_amount: "0", paid_installments: "0", credit_card_id: "",
+  recurrence: "none", recurrence_count: "",
 };
 
 export default function DebtForm({ open, onClose, onSave, editDebt, creditCards = [] }) {
@@ -59,6 +72,8 @@ export default function DebtForm({ open, onClose, onSave, editDebt, creditCards 
     paid_installments: String(editDebt.paid_installments || "0"),
     credit_card_id: editDebt.credit_card_id || "",
     start_date: normalizeDate(editDebt.start_date || ""),
+    recurrence: editDebt.recurrence || "none",
+    recurrence_count: String(editDebt.recurrence_count || ""),
   } : defaultForm);
 
   const [customCategories, setCustomCategories] = useState(() => {
@@ -160,6 +175,8 @@ export default function DebtForm({ open, onClose, onSave, editDebt, creditCards 
       paid_amount: parseFloat(form.paid_amount) || 0,
       paid_installments: parseInt(form.paid_installments, 10) || 0,
       credit_card_id: form.credit_card_id || null,
+      recurrence: form.recurrence !== "none" ? form.recurrence : null,
+      recurrence_count: form.recurrence_count ? parseInt(form.recurrence_count, 10) : null,
     };
     onSave(payload);
   };
@@ -290,6 +307,31 @@ export default function DebtForm({ open, onClose, onSave, editDebt, creditCards 
                 </SelectContent>
               </Select>
             </div>
+            <div>
+              <Label className="text-xs text-slate-400">Recorrência</Label>
+              <Select value={form.recurrence} onValueChange={v => handleChange("recurrence", v)}>
+                <SelectTrigger className="bg-white/5 border-white/10 text-white mt-1"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {RECURRENCE_OPTIONS.map(opt => (
+                    <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            {form.recurrence !== "none" && (
+              <div>
+                <Label className="text-xs text-slate-400">Número de Ocorrências</Label>
+                <Input
+                  type="number"
+                  min="1"
+                  value={form.recurrence_count}
+                  onChange={e => handleChange("recurrence_count", e.target.value)}
+                  placeholder="Ex: 12 (deixe vazio para indefinido)"
+                  className="bg-white/5 border-white/10 text-white mt-1"
+                />
+                <p className="text-[10px] text-slate-500 mt-1">Quantas vezes esta dívida se repetirá (opcional)</p>
+              </div>
+            )}
             <div className="col-span-2">
               <Label className="text-xs text-slate-400">Descrição</Label>
               <Input value={form.description} onChange={e => handleChange("description", e.target.value)} placeholder="Descrição breve" className="bg-white/5 border-white/10 text-white mt-1" />

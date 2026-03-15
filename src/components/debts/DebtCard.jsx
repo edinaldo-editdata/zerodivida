@@ -1,7 +1,7 @@
 import React from "react";
 import { motion } from "framer-motion";
 import { Badge } from "@/components/ui/badge";
-import { CreditCard as CreditCardIcon, Landmark, Home, Zap, Heart, GraduationCap, User, MoreHorizontal, ChevronRight } from "lucide-react";
+import { CreditCard as CreditCardIcon, Landmark, Home, Zap, Heart, GraduationCap, User, MoreHorizontal, ChevronRight, RefreshCw } from "lucide-react";
 
 const CATEGORY_CONFIG = {
   cartao_credito: { icon: CreditCardIcon, label: "Cartão de Crédito", color: "text-blue-400", bg: "bg-blue-500/10" },
@@ -38,6 +38,18 @@ export default function DebtCard({ debt, index, onClick, creditCard }) {
   const Icon = cat.icon;
   const progress = debt.total_amount > 0 ? Math.min(((debt.paid_amount || 0) / debt.total_amount) * 100, 100) : 0;
   const remaining = (debt.total_amount || 0) - (debt.paid_amount || 0);
+  const isRecurring = debt.recurrence && debt.recurrence !== "none";
+
+  const recurrenceLabels = {
+    daily: "Diária",
+    weekly: "Semanal",
+    biweekly: "Quinzenal",
+    monthly: "Mensal",
+    bimonthly: "Bimestral",
+    quarterly: "Trimestral",
+    semiannual: "Semestral",
+    annual: "Anual",
+  };
 
   return (
     <motion.div
@@ -61,6 +73,13 @@ export default function DebtCard({ debt, index, onClick, creditCard }) {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          {isRecurring && (
+            <Badge variant="secondary" className="text-[10px] font-medium border border-cyan-500/20 bg-cyan-500/15 text-cyan-400">
+              <RefreshCw className="w-3 h-3 mr-1" />
+              {recurrenceLabels[debt.recurrence]}
+              {debt.recurrence_count && ` (${debt.recurrence_count}x)`}
+            </Badge>
+          )}
           <Badge variant="secondary" className={`text-[10px] font-medium border ${status.class}`}>
             {status.label}
           </Badge>
