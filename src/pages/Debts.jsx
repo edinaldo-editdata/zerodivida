@@ -303,6 +303,16 @@ export default function Debts() {
     }
   }, [yearFilter, monthFilter]);
 
+  const monthsForSummary = useMemo(() => {
+    if (selectedMonthDate) {
+      return [selectedMonthDate];
+    }
+    const targetOptions = yearFilter !== "all"
+      ? allMonthOptions.filter(opt => opt.value.startsWith(`${yearFilter}-`))
+      : allMonthOptions;
+    return targetOptions.map(opt => monthKeyToDate(opt.value)).filter(Boolean);
+  }, [selectedMonthDate, yearFilter, allMonthOptions]);
+
   const handleClearFilters = () => {
     setSearch("");
     setStatusFilter("all");
@@ -376,28 +386,29 @@ export default function Debts() {
     });
   }, [debts, search, statusFilter, categoryFilter, selectedMonthDate, cardFilter]);
 
-  const monthSummary = useMemo(() => {
-    if (!selectedMonthDate) return null;
-    return debts.reduce((acc, debt) => {
-      const info = getInstallmentData(debt, selectedMonthDate);
-      if (!info) return acc;
+  const periodSummary = useMemo(() => {
+    if (!monthsForSummary.length) return null;
+    return monthsForSummary.reduce((acc, referenceDate) => {
+      debts.forEach(debt => {
+        const info = getInstallmentData(debt, referenceDate);
+        if (!info) return;
 
-      const value = info.amount || 0;
-      acc.totalAmount += value;
-      acc.totalCount += 1;
+        const value = info.amount || 0;
+        acc.totalAmount += value;
+        acc.totalCount += 1;
 
-      if (info.isPaid) {
-        acc.paidAmount += value;
-        acc.paidCount += 1;
-      } else {
-        acc.pendingAmount += value;
-        acc.pendingCount += 1;
-        if (info.isOverdue) {
-          acc.overdueAmount += value;
-          acc.overdueCount += 1;
+        if (info.isPaid) {
+          acc.paidAmount += value;
+          acc.paidCount += 1;
+        } else {
+          acc.pendingAmount += value;
+          acc.pendingCount += 1;
+          if (info.isOverdue) {
+            acc.overdueAmount += value;
+            acc.overdueCount += 1;
+          }
         }
-      }
-
+      });
       return acc;
     }, {
       totalAmount: 0,
@@ -409,17 +420,17 @@ export default function Debts() {
       overdueAmount: 0,
       overdueCount: 0,
     });
-  }, [debts, selectedMonthDate]);
+  }, [debts, monthsForSummary]);
 
-  const monthSummaryCards = useMemo(() => {
-    if (!selectedMonthDate || !monthSummary) return [];
+  const summaryCards = useMemo(() => {
+    if (!periodSummary) return [];
     return [
       {
         key: "total",
         title: "Total",
-        amount: monthSummary.totalAmount,
-        count: monthSummary.totalCount,
-        helper: "Volume total previsto para o mês",
+        amount: periodSummary.totalAmount,
+        count: periodSummary.totalCount,
+        helper: "Volume total previsto para o período",
         border: "border-sky-500/20",
         bg: "bg-sky-500/5",
         accent: "text-sky-400",
@@ -428,8 +439,8 @@ export default function Debts() {
       {
         key: "pendente",
         title: "Pendentes",
-        amount: monthSummary.pendingAmount,
-        count: monthSummary.pendingCount,
+        amount: periodSummary.pendingAmount,
+        count: periodSummary.pendingCount,
         helper: "Cobranças aguardando pagamento",
         border: "border-amber-500/20",
         bg: "bg-amber-500/5",
@@ -439,9 +450,9 @@ export default function Debts() {
       {
         key: "pago",
         title: "Pagas",
-        amount: monthSummary.paidAmount,
-        count: monthSummary.paidCount,
-        helper: "Parcelas já quitadas neste mês",
+        amount: periodSummary.paidAmount,
+        count: periodSummary.paidCount,
+        helper: "Parcelas já quitadas no período",
         border: "border-emerald-500/20",
         bg: "bg-emerald-500/5",
         accent: "text-emerald-400",
@@ -450,8 +461,8 @@ export default function Debts() {
       {
         key: "atrasada",
         title: "Em atraso",
-        amount: monthSummary.overdueAmount,
-        count: monthSummary.overdueCount,
+        amount: periodSummary.overdueAmount,
+        count: periodSummary.overdueCount,
         helper: "Pagamentos vencidos",
         border: "border-red-500/20",
         bg: "bg-red-500/5",
@@ -459,7 +470,7 @@ export default function Debts() {
         bar: "bg-gradient-to-r from-rose-500/80 via-rose-300/70 to-rose-500/80",
       },
     ];
-  }, [monthSummary, selectedMonthDate]);
+  }, [periodSummary]);
 
   const handleSaveDebt = (data) => {
     if (editDebt) {
@@ -611,10 +622,9 @@ export default function Debts() {
             </div>
           </div>
 
-          {selectedMonthDate && (
-            monthSummaryCards.length > 0 && monthSummary.totalCount > 0 ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mt-4">
-                {monthSummaryCards.map(card => {
+          {summaryCards.length > 0 && periodSummary?.totalCount > 0 ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mt-4">
+              {summaryCards.map(card => {
                   if (card.key === "total") {
                     return (
                       <motion.div
@@ -673,11 +683,10 @@ export default function Debts() {
                       <p className="relative text-[10px] text-slate-500 mt-1">{card.helper}{isActive ? " • filtro ativo" : " • clique para filtrar"}</p>
                     </motion.button>
                   );
-                })}
-              </div>
-            ) : (
-              <p className="text-sm text-slate-500 mt-4">Nenhuma cobrança prevista para este mês.</p>
-            )
+              })}
+            </div>
+          ) : (
+            <p className="text-sm text-slate-500 mt-4">Nenhuma cobrança prevista para este período.</p>
           )}
         </motion.div>
 
