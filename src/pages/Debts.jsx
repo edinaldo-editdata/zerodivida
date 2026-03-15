@@ -435,6 +435,7 @@ export default function Debts() {
         bg: "bg-sky-500/5",
         accent: "text-sky-400",
         bar: "bg-gradient-to-r from-sky-400/80 via-sky-200/70 to-sky-400/80",
+        indicator: "bg-sky-400",
       },
       {
         key: "pendente",
@@ -446,6 +447,7 @@ export default function Debts() {
         bg: "bg-amber-500/5",
         accent: "text-amber-400",
         bar: "bg-gradient-to-r from-amber-400/80 via-amber-200/70 to-amber-400/80",
+        indicator: "bg-amber-400",
       },
       {
         key: "pago",
@@ -457,6 +459,7 @@ export default function Debts() {
         bg: "bg-emerald-500/5",
         accent: "text-emerald-400",
         bar: "bg-gradient-to-r from-emerald-400/80 via-emerald-200/70 to-emerald-400/80",
+        indicator: "bg-emerald-400",
       },
       {
         key: "atrasada",
@@ -468,6 +471,7 @@ export default function Debts() {
         bg: "bg-red-500/5",
         accent: "text-red-400",
         bar: "bg-gradient-to-r from-rose-500/80 via-rose-300/70 to-rose-500/80",
+        indicator: "bg-rose-400",
       },
     ];
   }, [periodSummary]);
@@ -645,7 +649,14 @@ export default function Debts() {
                           animate={{ opacity: [0.5, 1, 0.5], scaleX: [0.7, 1, 0.7] }}
                           transition={{ duration: 2.5, repeat: Infinity, repeatType: "mirror" }}
                         />
-                        <p className={`relative text-xs uppercase tracking-wider ${card.accent}`}>{card.title}</p>
+                        <div className="relative flex items-center gap-2 text-xs uppercase tracking-wider">
+                          <motion.span
+                            className={`w-1.5 h-1.5 rounded-full ${card.indicator}`}
+                            animate={{ scale: [1, 1.4, 1], opacity: [0.4, 1, 0.4] }}
+                            transition={{ duration: 1.8, repeat: Infinity, repeatType: "mirror" }}
+                          />
+                          <p className={`${card.accent}`}>{card.title}</p>
+                        </div>
                         <p className="relative text-xl font-bold text-white mt-1">{formatCurrency(card.amount)}</p>
                         <p className="relative text-[11px] text-slate-300">{card.count} {card.count === 1 ? "registro" : "registros"}</p>
                         <p className="relative text-[10px] text-slate-500 mt-1">{card.helper}</p>
@@ -677,7 +688,14 @@ export default function Debts() {
                         animate={{ opacity: [0.35, 0.9, 0.35], scaleX: [0.75, 1, 0.75] }}
                         transition={{ duration: 2, repeat: Infinity, repeatType: "mirror" }}
                       />
-                      <p className={`relative text-xs uppercase tracking-wider ${card.accent}`}>{card.title}</p>
+                      <div className="relative flex items-center gap-2 text-xs uppercase tracking-wider">
+                        <motion.span
+                          className={`w-1.5 h-1.5 rounded-full ${card.indicator}`}
+                          animate={{ scale: [1, 1.4, 1], opacity: [0.4, 1, 0.4] }}
+                          transition={{ duration: 1.6, repeat: Infinity, repeatType: "mirror" }}
+                        />
+                        <p className={`${card.accent}`}>{card.title}</p>
+                      </div>
                       <p className="relative text-xl font-bold text-white mt-1">{formatCurrency(card.amount)}</p>
                       <p className="relative text-[11px] text-slate-300">{card.count} {card.count === 1 ? "registro" : "registros"}</p>
                       <p className="relative text-[10px] text-slate-500 mt-1">{card.helper}{isActive ? " • filtro ativo" : " • clique para filtrar"}</p>

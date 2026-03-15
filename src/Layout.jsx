@@ -112,11 +112,20 @@ export default function Layout({ children, currentPageName }) {
       <footer className="flex-none h-7 bg-[#0B0F19] border-t border-white/[0.04] px-4 flex items-center justify-between text-[10px] text-slate-500">
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-1.5">
-            <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.4)]" />
+            <motion.span
+              className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]"
+              animate={{ scale: [1, 1.5, 1], opacity: [0.6, 1, 0.6] }}
+              transition={{ duration: 1.5, repeat: Infinity, repeatType: "mirror" }}
+            />
             <span className="uppercase tracking-wider font-medium text-slate-400">Sistema Online</span>
           </div>
           <div className="hidden sm:flex items-center gap-1.5 border-l border-white/[0.04] pl-4">
-            <Wifi className="w-3 h-3" />
+            <motion.span
+              animate={{ y: [0, -1.5, 0], opacity: [0.6, 1, 0.6] }}
+              transition={{ duration: 2, repeat: Infinity, repeatType: "mirror" }}
+            >
+              <Wifi className="w-3 h-3" />
+            </motion.span>
             <span>Firebase Realtime Ativo</span>
           </div>
           <div className="hidden md:flex items-center gap-1.5 border-l border-white/[0.04] pl-4">
