@@ -124,9 +124,9 @@ export default function Layout({ children, currentPageName }) {
               animate={{ y: [0, -1.5, 0], opacity: [0.6, 1, 0.6] }}
               transition={{ duration: 2, repeat: Infinity, repeatType: "mirror" }}
             >
-              <Wifi className="w-3 h-3" />
+              <Wifi className="w-3 h-3 text-amber-400" />
             </motion.span>
-            <span>Firebase Realtime Ativo</span>
+            <span className="text-amber-300">Firebase Realtime Ativo</span>
           </div>
           <div className="hidden md:flex items-center gap-1.5 border-l border-white/[0.04] pl-4">
             <Clock className="w-3 h-3" />
