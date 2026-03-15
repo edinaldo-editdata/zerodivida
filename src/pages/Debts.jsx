@@ -415,6 +415,17 @@ export default function Debts() {
     if (!selectedMonthDate || !monthSummary) return [];
     return [
       {
+        key: "total",
+        title: "Total",
+        amount: monthSummary.totalAmount,
+        count: monthSummary.totalCount,
+        helper: "Volume total previsto para o mês",
+        border: "border-sky-500/20",
+        bg: "bg-sky-500/5",
+        accent: "text-sky-400",
+        bar: "bg-gradient-to-r from-sky-400/80 via-sky-200/70 to-sky-400/80",
+      },
+      {
         key: "pendente",
         title: "Pendentes",
         amount: monthSummary.pendingAmount,
@@ -604,6 +615,33 @@ export default function Debts() {
             monthSummaryCards.length > 0 && monthSummary.totalCount > 0 ? (
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-4">
                 {monthSummaryCards.map(card => {
+                  if (card.key === "total") {
+                    return (
+                      <motion.div
+                        key={card.key}
+                        initial={{ opacity: 0.8, y: 6 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ type: "spring", stiffness: 260, damping: 20 }}
+                        className={`relative overflow-hidden rounded-2xl border p-4 text-left ${card.border} ${card.bg}`}
+                      >
+                        <motion.div
+                          className="absolute inset-0 pointer-events-none"
+                          style={{ background: "linear-gradient(120deg, transparent 30%, rgba(255,255,255,0.06), transparent 70%)" }}
+                          animate={{ backgroundPosition: ["-200% 0%", "200% 0%"] }}
+                          transition={{ duration: 5, repeat: Infinity, ease: "linear" }}
+                        />
+                        <motion.div
+                          className={`relative h-1 w-full mb-3 rounded-full ${card.bar}`}
+                          animate={{ opacity: [0.5, 1, 0.5], scaleX: [0.7, 1, 0.7] }}
+                          transition={{ duration: 2.5, repeat: Infinity, repeatType: "mirror" }}
+                        />
+                        <p className={`relative text-xs uppercase tracking-wider ${card.accent}`}>{card.title}</p>
+                        <p className="relative text-xl font-bold text-white mt-1">{formatCurrency(card.amount)}</p>
+                        <p className="relative text-[11px] text-slate-300">{card.count} {card.count === 1 ? "registro" : "registros"}</p>
+                        <p className="relative text-[10px] text-slate-500 mt-1">{card.helper}</p>
+                      </motion.div>
+                    );
+                  }
                   const isActive = statusFilter === card.key;
                   return (
                     <motion.button
